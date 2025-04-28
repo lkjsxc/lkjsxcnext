@@ -139,7 +139,7 @@ export default function Home() {
       {/* Header */}
       <header className="flex justify-between items-center p-3 border-b bg-white shadow-sm flex-shrink-0 h-16"> {/* Fixed height */}
         <h1 className="text-xl font-bold text-gray-800 px-2">
-          Memo App
+          lkjsxc next
         </h1>
         <AuthButton
           session={session}
