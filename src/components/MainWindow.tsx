@@ -15,25 +15,12 @@ interface MainWindowProps {
 // --- Mock API Fetch Function (Replace with your actual API calls) ---
 async function fetchMemoById(id: string): Promise<Memo | null> {
   console.log(`Fetching memo by ID: ${id}`);
-  // const response = await fetch(`/api/memos/${id}`);
-  // if (!response.ok) {
-  //   if (response.status === 404) return null; // Not found
-  //   throw new Error(`Failed to fetch memo ${id}`);
-  // }
-  // return response.json();
-  // Mock Data:
-   await new Promise(resolve => setTimeout(resolve, 250)); // Simulate network delay
-  // Simulate finding a memo or not
-  const mockDb: Record<string, Memo> = {
-    'pub1': { id: 'pub1', title: 'Public Memo Alpha', content: 'Content for Alpha.', isPublic: true, authorId: 'user1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    'pub2': { id: 'pub2', title: 'Another Public Note', content: 'Content for the other note.', isPublic: true, authorId: 'user2', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    'mine1': { id: 'mine1', title: 'My Private Thoughts', content: 'Secret content here.', isPublic: false, authorId: 'currentUser', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    'mine2': { id: 'mine2', title: 'My Shared Idea', content: 'This idea is now public!', isPublic: true, authorId: 'currentUser', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-  };
-  const foundMemo = mockDb[id];
-  // If using mock data with 'currentUser', keep it as is for mock purposes
-  // The actual check against session.user.id happens in the component's render logic
-  return foundMemo || null;
+  const response = await fetch(`/api/memos/${id}`);
+  if (!response.ok) {
+    if (response.status === 404) return null; // Not found
+    throw new Error(`Failed to fetch memo ${id}`);
+  }
+  return response.json();
 }
 // --- End Mock API ---
 

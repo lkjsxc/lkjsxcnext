@@ -5,6 +5,27 @@ import { authOptions } from "../../auth/[...nextauth]/route";
 
 const prisma = new PrismaClient();
 
+export async function GET(request: Request, { params }: { params: { id: string } }) {
+  const { id } = params;
+
+  try {
+    const memo = await prisma.memo.findUnique({
+      where: {
+        id: id,
+      },
+    });
+
+    if (!memo) {
+      return NextResponse.json({ message: "Memo not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(memo);
+  } catch (error) {
+    console.error("Error fetching memo:", error);
+    return NextResponse.json({ message: "Error fetching memo" }, { status: 500 });
+  }
+}
+
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
 

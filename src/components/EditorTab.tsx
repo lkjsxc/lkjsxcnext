@@ -14,31 +14,18 @@ interface EditorTabProps {
 // --- Mock API Update/Delete Functions (Replace with actual calls) ---
 async function updateMemoApi(id: string, data: Partial<Pick<Memo, 'title' | 'content' | 'isPublic'>>): Promise<Memo> {
     console.log(`Updating memo ${id} with:`, data);
-    // const response = await fetch(`/api/memos/${id}`, {
-    //   method: 'PUT',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify(data),
-    // });
-    // if (!response.ok) throw new Error('Failed to update memo');
-    // return response.json();
-    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-    // Return updated mock memo
-    return {
-        id: id,
-        title: data.title ?? '',
-        content: data.content ?? '',
-        isPublic: data.isPublic ?? false,
-        authorId: 'currentUser', // Keep mock consistent
-        createdAt: new Date().toISOString(), // Mocked
-        updatedAt: new Date().toISOString(), // Mocked
-    };
+    const response = await fetch(`/api/memos/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Failed to update memo');
+    return response.json();
 }
 
 async function deleteMemoApi(id: string): Promise<void> {
-    console.log(`Deleting memo ${id}`);
-    // const response = await fetch(`/api/memos/${id}`, { method: 'DELETE' });
-    // if (!response.ok) throw new Error('Failed to delete memo');
-    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
+    const response = await fetch(`/api/memos/${id}`, { method: 'DELETE' });
+    if (!response.ok) throw new Error('Failed to delete memo');
 }
 // --- End Mock API ---
 

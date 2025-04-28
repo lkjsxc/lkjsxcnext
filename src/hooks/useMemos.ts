@@ -48,9 +48,12 @@ export const useMemos = (isPublicView: boolean): UseMemosResult => {
 
   useEffect(() => {
     // Fetch memos when status or isPublicView changes
-    if (status === 'authenticated' || isPublicView) { // Fetch public memos even if not authenticated
+    // Fetch memos if authenticated or in public view.
+    // Do not fetch if unauthenticated and in private view.
+    if (status === 'authenticated' || isPublicView) {
       fetchMemos();
-    } else if (status === 'unauthenticated' && !isPublicView) { // Clear memos if unauthenticated and not in public view
+    } else if (status === 'unauthenticated' && !isPublicView) {
+      // Clear memos and reset state if unauthenticated and not in public view
       setMemos([]);
       setError(null);
       setLoading({ fetching: false, creating: false, updating: null, deleting: null });
@@ -73,9 +76,13 @@ export const useMemos = (isPublicView: boolean): UseMemosResult => {
         return;
      }
      await handleApiCall(() => updateMemoApi(id, title, content, isPublic), 'updating', (updatedMemo: Memo) => {
-       setMemos(prevMemos =>
-         prevMemos.map(memo => (memo.id === id ? updatedMemo : memo))
-       );
+       console.log("API returned updated memo:", updatedMemo);
+       setMemos(prevMemos => {
+         console.log("Previous memos state:", prevMemos);
+         const newMemos = prevMemos.map(memo => (memo.id === id ? updatedMemo : memo));
+         console.log("New memos state after update:", newMemos);
+         return newMemos;
+       });
      }, id);
   };
 
