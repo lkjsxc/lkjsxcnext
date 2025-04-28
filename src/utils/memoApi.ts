@@ -33,6 +33,14 @@ const handleApiResponse = async <T>(res: Response): Promise<T> => {
   return res.json() as Promise<T>;
 };
 
+export const fetchMemoById = async (id: string): Promise<Memo | null> => {
+  const res = await fetch(`${API_BASE_URL}/${id}`);
+  if (res.status === 404) {
+    return null;
+  }
+  return handleApiResponse<Memo>(res);
+};
+
 export const fetchPublicMemos = async (): Promise<Memo[]> => {
   const res = await fetch(API_BASE_URL);
   return handleApiResponse<Memo[]>(res);

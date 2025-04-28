@@ -1,7 +1,7 @@
 // src/components/EditorTab.tsx
 import { useState, useCallback, useEffect } from 'react';
 import type { Session } from 'next-auth';
-import type { Memo } from '@/types';
+import type { Memo } from '@/types/memo';
 
 interface EditorTabProps {
   memo: Memo;
@@ -45,7 +45,7 @@ async function deleteMemoApi(id: string): Promise<void> {
 
 export default function EditorTab({ memo, session, onMemoDeleted }: EditorTabProps) {
   const [title, setTitle] = useState(memo.title);
-  const [content, setContent] = useState(memo.content);
+  const [content, setContent] = useState(memo.content ?? '');
   const [isPublic, setIsPublic] = useState(memo.isPublic);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -55,7 +55,7 @@ export default function EditorTab({ memo, session, onMemoDeleted }: EditorTabPro
   // Reset form state if the memo prop changes (e.g., user selects a different memo)
   useEffect(() => {
     setTitle(memo.title);
-    setContent(memo.content);
+    setContent(memo.content ?? '');
     setIsPublic(memo.isPublic);
     setError(null);
     setSaveSuccess(false);

@@ -1,48 +1,18 @@
 // src/components/Explorer.tsx
 import { useState, useEffect, useCallback } from 'react';
 import type { Session } from 'next-auth';
-import type { Memo } from '@/types'; // Adjust path as needed
+import type { Memo } from '@/types/memo'; // Adjust path as needed
+import { fetchPublicMemos, fetchUserMemos, createMemoApi } from '@/utils/memoApi'; // Import actual API functions
 
 interface ExplorerProps {
   session: Session | null;
   onSelectMemo: (memoId: string | null) => void;
   selectedMemoId: string | null;
-  // Add onCreateNewMemo prop later if the button is here
+  onCreateNewMemo: (newMemoId: string) => void; // Add onCreateNewMemo prop
 }
 
-// --- Mock API Fetch Functions (Replace with your actual API calls) ---
-async function fetchPublicMemos(): Promise<Memo[]> {
-  console.log('Fetching public memos...');
-  // const response = await fetch('/api/memos/public');
-  // if (!response.ok) throw new Error('Failed to fetch public memos');
-  // return response.json();
-  // Mock Data:
-  await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network delay
-   return [
-     { id: 'pub1', title: 'Public Memo Alpha', content: '...', isPublic: true, authorId: 'user1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-     { id: 'pub2', title: 'Another Public Note', content: '...', isPublic: true, authorId: 'user2', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-   ];
-}
 
-async function fetchUserMemos(): Promise<Memo[]> {
-  console.log('Fetching user memos...');
-  // const response = await fetch('/api/memos/mine'); // Needs authentication header handled
-  // if (!response.ok) {
-  //   if (response.status === 401) return []; // Not logged in or unauthorized
-  //   throw new Error('Failed to fetch user memos');
-  // }
-  // return response.json();
-  // Mock Data:
-  await new Promise(resolve => setTimeout(resolve, 400)); // Simulate network delay
-   return [
-    { id: 'mine1', title: 'My Private Thoughts', content: '...', isPublic: false, authorId: 'currentUser', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    { id: 'mine2', title: 'My Shared Idea', content: '...', isPublic: true, authorId: 'currentUser', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-   ];
-}
-// --- End Mock API ---
-
-
-export default function Explorer({ session, onSelectMemo, selectedMemoId }: ExplorerProps) {
+export default function Explorer({ session, onSelectMemo, selectedMemoId, onCreateNewMemo }: ExplorerProps) {
   const [memos, setMemos] = useState<Memo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,14 +32,10 @@ export default function Explorer({ session, onSelectMemo, selectedMemoId }: Expl
       ]);
 
       // Combine and deduplicate memos
+      // Prioritize user's version if they have edited a public memo
       const combinedMemos: Record<string, Memo> = {};
-      [...publicMemos, ...userMemos].forEach(memo => {
-         // Ensure user memos have correct authorId if mock data uses placeholder
-         if (session && memo.authorId === 'currentUser') {
-             memo.authorId = session.user.id ?? 'unknown';
-         }
-         combinedMemos[memo.id] = memo; // Overwrite public with user's version if IDs match
-      });
+      publicMemos.forEach(memo => combinedMemos[memo.id] = memo);
+      userMemos.forEach(memo => combinedMemos[memo.id] = memo); // User's memos overwrite public ones with same ID
 
       // Sort by date (newest first) - adjust if needed
       const sortedMemos = Object.values(combinedMemos).sort(
@@ -90,16 +56,39 @@ export default function Explorer({ session, onSelectMemo, selectedMemoId }: Expl
     loadMemos();
   }, [loadMemos]); // Dependency array includes the memoized function
 
+  const handleCreateNewMemo = useCallback(async () => {
+    if (!session) {
+      alert('You must be logged in to create a new memo.');
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    try {
+      const newMemo = await createMemoApi('', ''); // Create with empty title and content
+      onCreateNewMemo(newMemo.id); // Call the prop to select the new memo
+      loadMemos(); // Reload the list to show the new memo
+    } catch (err) {
+      console.error("Error creating new memo:", err);
+      setError(err instanceof Error ? err.message : 'Failed to create new memo.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [session, onCreateNewMemo, loadMemos]); // Dependencies
+
 
   // --- Render Logic ---
   return (
     <div className="h-full flex flex-col">
       <h2 className="text-xl font-semibold mb-4 border-b pb-2">Explorer</h2>
 
-      {/* TODO: Add "Create New Memo" Button Here */}
-      {/* <button className="mb-4 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+      {/* "Create New Memo" Button */}
+      <button
+        onClick={handleCreateNewMemo}
+        className="mb-4 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+        disabled={isLoading || !session} // Disable if loading or not logged in
+      >
         + New Memo
-      </button> */}
+      </button>
 
       {/* TODO: Add Filter Input Here */}
       {/* <input type="text" placeholder="Filter by title..." className="mb-4 p-2 border rounded w-full" /> */}
@@ -125,15 +114,15 @@ export default function Explorer({ session, onSelectMemo, selectedMemoId }: Expl
               >
                 <span className="block truncate"> {/* truncate long titles */}
                    {memo.title || '(Untitled)'}
-                 </span>
-                 {/* Optional: Add a small indicator for user's own memos */}
-                 {session && memo.authorId === session.user.id && (
-                    <span className="text-xs text-blue-600 ml-1">(Mine)</span>
-                 )}
-                 {/* Optional: Add indicator for public/private */}
-                 {/* <span className={`text-xs ml-1 ${memo.isPublic ? 'text-green-600' : 'text-gray-500'}`}>
-                    {memo.isPublic ? 'Public' : 'Private'}
-                 </span> */}
+                </span>
+                {/* Optional: Add a small indicator for user's own memos */}
+                {session && memo.authorId === session.user.id && (
+                   <span className="text-xs text-blue-600 ml-1">(Mine)</span>
+                )}
+                {/* Optional: Add indicator for public/private */}
+                {/* <span className={`text-xs ml-1 ${memo.isPublic ? 'text-green-600' : 'text-gray-500'}`}>
+                   {memo.isPublic ? 'Public' : 'Private'}
+                </span> */}
               </button>
             </li>
           ))}

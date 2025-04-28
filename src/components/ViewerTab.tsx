@@ -1,5 +1,5 @@
 // src/components/ViewerTab.tsx
-import type { Memo } from '@/types';
+import type { Memo } from '@/types/memo';
 
 interface ViewerTabProps {
   memo: Memo;
