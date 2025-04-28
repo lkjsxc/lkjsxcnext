@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { PrismaClient } from "@/generated/prisma";
 import { NextResponse } from "next/server";
 import { authOptions } from "../auth/[...nextauth]/route"; // Assuming authOptions are exported from your NextAuth route file
+import { broadcastMessage } from "@/lib/websocketServer";
 
 const prisma = new PrismaClient();
 
@@ -53,6 +54,12 @@ export async function POST(request: Request) {
         authorId: session.user.id,
       },
     });
+
+    // Broadcast the new memo to all connected WebSocket clients
+    // Broadcast the new memo to all connected Socket.io clients
+    // Broadcast the new memo to all connected WebSocket clients
+    broadcastMessage(JSON.stringify({ type: 'memo_created', payload: newMemo }));
+ 
     return NextResponse.json(newMemo, { status: 201 });
   } catch (error) {
     console.error("Error creating memo:", error);

@@ -1,8 +1,9 @@
 // src/components/Explorer.tsx
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Session } from 'next-auth';
 import type { Memo } from '@/types/memo'; // Adjust path as needed
 import { fetchPublicMemos, fetchUserMemos, createMemoApi } from '@/utils/memoApi'; // Import actual API functions
+import { connectMemoWebSocket } from '@/utils/memoWebSocket'; // Import websocket utility
 
 interface ExplorerProps {
   session: Session | null;
@@ -52,9 +53,90 @@ export default function Explorer({ session, onSelectMemo, selectedMemoId, onCrea
     }
   }, [session]); // Reload when session changes
 
+// Effect to load memos when session changes or component mounts
   useEffect(() => {
     loadMemos();
   }, [loadMemos]); // Dependency array includes the memoized function
+   // Dependency array includes the memoized function
+// Effect to manage WebSocket connection
+  const wsRef = useRef<WebSocket | null>(null);
+
+  useEffect(() => {
+    let ws: WebSocket | null = null; // Use a local variable for the current effect run
+
+    // Only attempt to connect if session user ID exists
+    if (session?.user?.id) {
+      console.log('Explorer: WebSocket effect running, session user ID exists.');
+      ws = connectMemoWebSocket(
+        (message) => {
+          // Handle incoming websocket messages
+          console.log('WebSocket message received in Explorer:', message);
+          if (message && message.type && message.payload) {
+            setMemos(currentMemos => {
+              const updatedMemos = [...currentMemos];
+              const memoIndex = updatedMemos.findIndex(m => m.id === message.payload.id);
+
+              switch (message.type) {
+                case 'memo_created':
+                  if (memoIndex === -1) {
+                    updatedMemos.unshift(message.payload);
+                  }
+                  break;
+                case 'memo_updated':
+                  if (memoIndex !== -1) {
+                    updatedMemos[memoIndex] = message.payload;
+                  } else {
+                     updatedMemos.unshift(message.payload);
+                  }
+                  break;
+                case 'memo_deleted':
+                  if (memoIndex !== -1) {
+                    updatedMemos.splice(memoIndex, 1);
+                  }
+                  break;
+                default:
+                  console.warn('Unknown websocket message type:', message.type);
+              }
+               updatedMemos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+              return updatedMemos;
+            });
+          }
+        },
+        (error) => {
+          console.error('WebSocket error in Explorer:', error);
+          // Optional: Display a user-friendly error message
+        }
+      );
+      wsRef.current = ws; // Store in ref
+    } else {
+      console.log('Explorer: WebSocket effect skipped, no session user ID.');
+      // If session becomes null, ensure any existing connection is closed
+      if (wsRef.current) {
+         console.log('Closing Memo WebSocket connection due to session change.');
+         wsRef.current.close();
+         wsRef.current = null;
+      }
+    }
+
+    // Cleanup function
+    return () => {
+      console.log('Explorer: WebSocket effect cleanup running.');
+      // Check if the WebSocket instance created in *this specific effect run* exists
+      // and is still the one stored in the ref (important for StrictMode)
+      if (ws && wsRef.current === ws) {
+         console.log('Closing Memo WebSocket connection during cleanup.');
+         ws.close();
+         wsRef.current = null; // Clear the ref
+      } else if (wsRef.current && wsRef.current !== ws) {
+         // This case might happen if a new effect run started and replaced wsRef.current
+         // but the old effect's cleanup is now running.
+         console.log('Explorer: Cleanup found wsRef.current but it was replaced by a new effect run. Not closing.');
+      } else {
+         console.log('Explorer: Cleanup found no active WebSocket connection to close.');
+      }
+    };
+
+  }, [session?.user?.id]); // Dependency on session user ID
 
   const handleCreateNewMemo = useCallback(async () => {
     if (!session) {

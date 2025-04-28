@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { Memo, LoadingStates } from '../types/memo';
 import { fetchPublicMemos, fetchUserMemos, createMemoApi, updateMemoApi, deleteMemoApi } from '../utils/memoApi';
+import { connectMemoWebSocket } from '../utils/memoWebSocket'; // Import the WebSocket client function
 
 interface UseMemosResult {
   memos: Memo[];
@@ -40,25 +41,61 @@ export const useMemos = (isPublicView: boolean): UseMemosResult => {
   }, []);
 
   const fetchMemos = useCallback(async () => {
-    // Fetch public memos if isPublicView is true, otherwise fetch user's memos
-    // Fetch public memos if isPublicView is true, otherwise fetch user's memos
     const apiCall = isPublicView ? fetchPublicMemos : fetchUserMemos;
     handleApiCall(apiCall, 'fetching', setMemos);
-  }, [status, handleApiCall, isPublicView]); // Add isPublicView as a dependency
+  }, [status, handleApiCall, isPublicView]);
 
   useEffect(() => {
-    // Fetch memos when status or isPublicView changes
-    // Fetch memos if authenticated or in public view.
-    // Do not fetch if unauthenticated and in private view.
     if (status === 'authenticated' || isPublicView) {
       fetchMemos();
     } else if (status === 'unauthenticated' && !isPublicView) {
-      // Clear memos and reset state if unauthenticated and not in public view
       setMemos([]);
       setError(null);
       setLoading({ fetching: false, creating: false, updating: null, deleting: null });
     }
-  }, [status, fetchMemos, isPublicView]); // Add isPublicView as a dependency
+  }, [status, fetchMemos, isPublicView]);
+
+  // WebSocket integration
+  useEffect(() => {
+    console.log('useMemos useEffect: Establishing WebSocket connection');
+    const handleWebSocketMessage = (data: any) => {
+      console.log('Received WebSocket message:', data);
+      // Update memos state based on the message type
+      switch (data.type) {
+        case 'memo_created':
+          // Add the new memo to the beginning of the list
+          setMemos(prevMemos => [data.payload, ...prevMemos]);
+          break;
+        case 'memo_updated':
+          // Replace the updated memo in the list
+          setMemos(prevMemos => prevMemos.map(memo => (memo.id === data.payload.id ? data.payload : memo)));
+          break;
+        case 'memo_deleted':
+          // Remove the deleted memo from the list
+          setMemos(prevMemos => prevMemos.filter(memo => memo.id !== data.payload.id));
+          break;
+        default:
+          console.warn('Unknown WebSocket message type:', data.type);
+      }
+    };
+
+    const handleWebSocketError = (error: Event) => {
+      console.error('WebSocket error:', error);
+      // Handle WebSocket errors, e.g., attempt to reconnect
+      // For simplicity, we'll just log the error for now.
+    };
+
+    // Establish WebSocket connection
+    const ws = connectMemoWebSocket(handleWebSocketMessage, handleWebSocketError);
+
+    // Clean up the WebSocket connection when the component unmounts
+    return () => {
+      console.log('useMemos useEffect cleanup: Closing WebSocket connection');
+      if (ws && ws.readyState !== WebSocket.CLOSED) {
+        ws.close();
+      }
+    };
+  }, []); // Empty dependency array ensures this effect runs only once on mount and cleans up on unmount
 
   const createMemo = async (title: string, content: string) => {
     if (!title.trim()) {
@@ -66,7 +103,8 @@ export const useMemos = (isPublicView: boolean): UseMemosResult => {
         return;
     }
     await handleApiCall(() => createMemoApi(title, content), 'creating', (newMemo: Memo) => {
-      setMemos(prevMemos => [newMemo, ...prevMemos]);
+      // The WebSocket will broadcast the new memo, so we don't update state here directly
+      console.log("Memo created via API, waiting for WebSocket broadcast.");
     });
   };
 
@@ -76,19 +114,15 @@ export const useMemos = (isPublicView: boolean): UseMemosResult => {
         return;
      }
      await handleApiCall(() => updateMemoApi(id, title, content, isPublic), 'updating', (updatedMemo: Memo) => {
-       console.log("API returned updated memo:", updatedMemo);
-       setMemos(prevMemos => {
-         console.log("Previous memos state:", prevMemos);
-         const newMemos = prevMemos.map(memo => (memo.id === id ? updatedMemo : memo));
-         console.log("New memos state after update:", newMemos);
-         return newMemos;
-       });
+       // The WebSocket will broadcast the updated memo, so we don't update state here directly
+       console.log("Memo updated via API, waiting for WebSocket broadcast.");
      }, id);
   };
 
   const deleteMemo = async (id: string) => {
     await handleApiCall(() => deleteMemoApi(id), 'deleting', () => {
-      setMemos(prevMemos => prevMemos.filter(memo => memo.id !== id));
+      // The WebSocket will broadcast the deleted memo ID, so we don't update state here directly
+      console.log("Memo deleted via API, waiting for WebSocket broadcast.");
     }, id);
   };
 
