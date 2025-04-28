@@ -1,7 +1,7 @@
 # lkjsxcnext
 
 ## Description
-A simple memo application built with Next.js, featuring Google login and the ability to create, view, update, and delete memos. Users can view public memos or, after logging in, manage their own private memos.
+A simple memo application.
 
 ## Technologies Used
 - **Framework:** Next.js
@@ -15,6 +15,7 @@ A simple memo application built with Next.js, featuring Google login and the abi
 - Private memo list and editor for logged-in users to manage their own memos.
 - Toggle functionality to switch between viewing public memos and personal memos.
 - API endpoints for fetching, creating, updating, and deleting memos.
+- All communication except for authentication is done via websocket.
 
 ## Page
 - **Navbar**
@@ -22,7 +23,7 @@ A simple memo application built with Next.js, featuring Google login and the abi
     - Account
     - Sign Out button (preliminary)
 - **Explorer** 
-    - Create new memo button (Will be implemented later)
+    - Create new memo button
     - Filter title (Will be implemented later)
     - Public everyone memos
 - **MainWindow**

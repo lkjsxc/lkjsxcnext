@@ -2,7 +2,6 @@ import { getServerSession } from "next-auth/next";
 import { PrismaClient } from "@/generated/prisma";
 import { NextResponse } from "next/server";
 import { authOptions } from "../../auth/[...nextauth]/route";
-import { broadcastMessage } from "@/lib/websocketServer";
 
 const prisma = new PrismaClient();
 
@@ -43,11 +42,6 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         isPublic, // Include isPublic in the update data
       },
     });
-
-    // Broadcast the updated memo to all connected WebSocket clients
-    // Broadcast the updated memo to all connected Socket.io clients
-    // Broadcast the updated memo to all connected WebSocket clients
-    broadcastMessage(JSON.stringify({ type: 'memo_updated', payload: updatedMemo }));
  
     return NextResponse.json(updatedMemo);
 }
@@ -67,11 +61,6 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
         authorId: session.user.id, // Ensure the user owns the memo
       },
     });
-
-    // Broadcast the deleted memo ID to all connected WebSocket clients
-    // Broadcast the deleted memo ID to all connected Socket.io clients
-    // Broadcast the deleted memo ID to all connected WebSocket clients
-    broadcastMessage(JSON.stringify({ type: 'memo_deleted', payload: { id } }));
  
     return NextResponse.json({ message: "Memo deleted successfully" });
 }

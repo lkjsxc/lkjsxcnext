@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Session } from 'next-auth';
 import type { Memo } from '@/types/memo'; // Adjust path as needed
 import { fetchPublicMemos, fetchUserMemos, createMemoApi } from '@/utils/memoApi'; // Import actual API functions
-import { initializeMemoWebSocket, subscribeToMemoMessages, unsubscribeFromMemoMessages } from '@/utils/memoWebSocket'; // Import websocket utility
 
 interface ExplorerProps {
   session: Session | null;
@@ -67,8 +66,6 @@ export default function Explorer({ session, onSelectMemo, selectedMemoId, onCrea
     // Only attempt to connect if session user ID exists
     if (session?.user?.id) {
       console.log('Explorer: WebSocket effect running, session user ID exists.');
-      // Initialize the WebSocket connection
-      initializeMemoWebSocket();
 
       // Subscribe to memo messages
       const handleMemoMessage = (message: any) => {
@@ -106,8 +103,6 @@ export default function Explorer({ session, onSelectMemo, selectedMemoId, onCrea
         }
       };
 
-      subscribeToMemoMessages(handleMemoMessage);
-
       // Note: We don't store the WebSocket instance directly in wsRef here
       // because websocketManager manages the single connection.
       // We just need to ensure we unsubscribe on cleanup.
@@ -126,7 +121,6 @@ export default function Explorer({ session, onSelectMemo, selectedMemoId, onCrea
         // This is a placeholder to get the function reference for unsubscribe
         // The actual logic is in the effect's scope
       };
-      unsubscribeFromMemoMessages(handleMemoMessage);
       console.log('Explorer: Unsubscribed from memo messages.');
     };
 
