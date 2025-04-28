@@ -1,19 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { Memo, LoadingStates } from '../types/memo';
-import { fetchAllMemos, createMemoApi, updateMemoApi, deleteMemoApi } from '../utils/memoApi';
+import { fetchPublicMemos, fetchUserMemos, createMemoApi, updateMemoApi, deleteMemoApi } from '../utils/memoApi';
 
 interface UseMemosResult {
   memos: Memo[];
   loading: LoadingStates;
   error: string | null;
-  createMemo: (title: string, content: string) => Promise<void>;
-  updateMemo: (id: string, title: string, content: string) => Promise<void>;
+  createMemo: (title: string, content: string, isPublic?: boolean) => Promise<void>;
+  updateMemo: (id: string, title: string, content: string, isPublic?: boolean) => Promise<void>;
   deleteMemo: (id: string) => Promise<void>;
   fetchMemos: () => Promise<void>;
 }
 
-export const useMemos = (): UseMemosResult => {
+export const useMemos = (isPublicView: boolean): UseMemosResult => {
   const { status } = useSession();
   const [memos, setMemos] = useState<Memo[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -40,19 +40,22 @@ export const useMemos = (): UseMemosResult => {
   }, []);
 
   const fetchMemos = useCallback(async () => {
-    if (status !== 'authenticated') return;
-    handleApiCall(fetchAllMemos, 'fetching', setMemos);
-  }, [status, handleApiCall]);
+    // Fetch public memos if isPublicView is true, otherwise fetch user's memos
+    // Fetch public memos if isPublicView is true, otherwise fetch user's memos
+    const apiCall = isPublicView ? fetchPublicMemos : fetchUserMemos;
+    handleApiCall(apiCall, 'fetching', setMemos);
+  }, [status, handleApiCall, isPublicView]); // Add isPublicView as a dependency
 
   useEffect(() => {
-    if (status === 'authenticated') {
+    // Fetch memos when status or isPublicView changes
+    if (status === 'authenticated' || isPublicView) { // Fetch public memos even if not authenticated
       fetchMemos();
-    } else if (status === 'unauthenticated') {
+    } else if (status === 'unauthenticated' && !isPublicView) { // Clear memos if unauthenticated and not in public view
       setMemos([]);
       setError(null);
       setLoading({ fetching: false, creating: false, updating: null, deleting: null });
     }
-  }, [status, fetchMemos]);
+  }, [status, fetchMemos, isPublicView]); // Add isPublicView as a dependency
 
   const createMemo = async (title: string, content: string) => {
     if (!title.trim()) {
@@ -64,16 +67,16 @@ export const useMemos = (): UseMemosResult => {
     });
   };
 
-  const updateMemo = async (id: string, title: string, content: string) => {
+  const updateMemo = async (id: string, title: string, content: string, isPublic?: boolean) => {
      if (!title.trim()) {
         setError("Memo title cannot be empty.");
         return;
-    }
-    await handleApiCall(() => updateMemoApi(id, title, content), 'updating', (updatedMemo: Memo) => {
-      setMemos(prevMemos =>
-        prevMemos.map(memo => (memo.id === id ? updatedMemo : memo))
-      );
-    }, id);
+     }
+     await handleApiCall(() => updateMemoApi(id, title, content, isPublic), 'updating', (updatedMemo: Memo) => {
+       setMemos(prevMemos =>
+         prevMemos.map(memo => (memo.id === id ? updatedMemo : memo))
+       );
+     }, id);
   };
 
   const deleteMemo = async (id: string) => {

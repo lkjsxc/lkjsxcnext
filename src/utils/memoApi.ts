@@ -33,8 +33,14 @@ const handleApiResponse = async <T>(res: Response): Promise<T> => {
   return res.json() as Promise<T>;
 };
 
-export const fetchAllMemos = async (): Promise<Memo[]> => {
+export const fetchPublicMemos = async (): Promise<Memo[]> => {
   const res = await fetch(API_BASE_URL);
+  return handleApiResponse<Memo[]>(res);
+};
+
+export const fetchUserMemos = async (): Promise<Memo[]> => {
+  // Assuming the API endpoint handles fetching user-specific memos based on the authenticated session
+  const res = await fetch(`${API_BASE_URL}?scope=private`);
   return handleApiResponse<Memo[]>(res);
 };
 
@@ -47,11 +53,11 @@ export const createMemoApi = async (title: string, content: string): Promise<Mem
   return handleApiResponse<Memo>(res);
 };
 
-export const updateMemoApi = async (id: string, title: string, content: string): Promise<Memo> => {
+export const updateMemoApi = async (id: string, title: string, content: string, isPublic?: boolean): Promise<Memo> => {
   const res = await fetch(`${API_BASE_URL}/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, content }),
+    body: JSON.stringify({ title, content, isPublic }),
   });
   return handleApiResponse<Memo>(res);
 };

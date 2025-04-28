@@ -2,6 +2,7 @@ export interface Memo {
   id: string;
   title: string;
   content: string | null;
+  isPublic: boolean;
 }
 
 export interface LoadingStates {

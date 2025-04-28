@@ -13,7 +13,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   }
 
   const { id } = params;
-  const { title, content } = await request.json();
+  const { title, content, isPublic } = await request.json();
 
   try {
     const updatedMemo = await prisma.memo.update({
@@ -24,6 +24,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       data: {
         title,
         content,
+        isPublic, // Include isPublic in the update data
       },
     });
     return NextResponse.json(updatedMemo);

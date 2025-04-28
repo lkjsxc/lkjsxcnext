@@ -5,18 +5,26 @@ import { authOptions } from "../auth/[...nextauth]/route"; // Assuming authOptio
 
 const prisma = new PrismaClient();
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
+  const { searchParams } = new URL(request.url);
+  const scope = searchParams.get('scope'); // 'public' or 'private'
 
-  if (!session || !session.user) {
+  if (scope === 'private' && (!session || !session.user)) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
   try {
+    const whereClause: any = {};
+
+    if (scope === 'private' && session?.user?.id) {
+      whereClause.authorId = session.user.id;
+    } else { // Default to public if scope is not private or user is not authenticated
+      whereClause.isPublic = true;
+    }
+
     const memos = await prisma.memo.findMany({
-      where: {
-        authorId: session.user.id,
-      },
+      where: whereClause,
       orderBy: {
         createdAt: "desc",
       },
@@ -36,11 +44,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { title, content } = await request.json();
+    const { title, content, isPublic } = await request.json();
     const newMemo = await prisma.memo.create({
       data: {
         title,
         content,
+        isPublic: isPublic ?? false, // Default to false if not provided
         authorId: session.user.id,
       },
     });

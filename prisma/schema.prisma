@@ -89,6 +89,7 @@ model Memo {
   updatedAt DateTime @updatedAt          // Timestamp when the memo was last updated
   title     String                       // Title of the memo
   content   String?                      // Content of the memo (optional)
+  isPublic  Boolean @default(false)      // Indicates if the memo is public or private
   authorId  String                       // Foreign key linking to the User model (author)
 
   // --- Relation back to User ---

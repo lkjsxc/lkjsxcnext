@@ -2,145 +2,86 @@
 
 import { useState, useCallback } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
-import MemoExplorer from '@/components/MemoExplorer'; // Shows everyone's memos (Public)
-import MemoListEditor from '@/components/MemoListEditor'; // Shows logged-in user's memos
-import { useMemos } from '@/hooks/useMemos'; // Assuming this hook fetches *public* memos or handles context
+import MemoExplorer from '@/components/MemoExplorer'; // Shows everyone's public memos
+import MemoListEditor from '@/components/MemoListEditor'; // Shows logged-in user's memos + editor functionality
+import { useMemos } from '@/hooks/useMemos'; // Assuming this hook fetches public memos
+import AuthButton from '@/components/AuthButton';
+import SignInPrompt from '@/components/SignInPrompt';
+import DataErrorDisplay from '@/components/DataErrorDisplay';
 
-// --- Helper Functional Components ---
-
-// AuthButton (Keep as is - it's well-structured)
-const AuthButton = ({ session, status, onSignIn, onSignOut, authError }: { // Removed setAuthError prop as it's handled by handlers
-  session: ReturnType<typeof useSession>['data'];
-  status: ReturnType<typeof useSession>['status'];
-  onSignIn: () => Promise<void>;
-  onSignOut: () => Promise<void>;
-  authError: string | null;
-}) => {
-  // Display Auth Error near the button if it occurs
-  const errorDisplay = authError ? (
-    <p className="text-xs text-red-600 mr-2">{authError}</p>
-  ) : null;
-
-  if (status === 'loading') {
-    return <div className="px-4 py-2 text-sm text-gray-500">Loading Auth...</div>;
-  }
-
-  if (session) {
-    return (
-      <div className="flex items-center gap-4">
-        {errorDisplay}
-        <p className="text-sm hidden sm:block">
-          Signed in as <span className="font-semibold">{session.user?.name || session.user?.email}</span>
-        </p>
-        <button
-          onClick={onSignOut}
-          className="px-4 py-2 border rounded-md text-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 transition duration-150 ease-in-out flex-shrink-0" // flex-shrink-0 prevents shrinking
-        >
-          Sign out
-        </button>
-      </div>
-    );
-  }
-
-  return (
-      <div className="flex items-center gap-2">
-         {errorDisplay}
-        <button
-        onClick={onSignIn}
-        className="px-4 py-2 border rounded-md text-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition duration-150 ease-in-out flex-shrink-0" // flex-shrink-0 prevents shrinking
-        >
-        Sign in
-        </button>
-      </div>
-  );
-};
-
-// Component for the right pane when the user is logged out
-const SignInPrompt = ({ onSignIn }: { onSignIn: () => Promise<void> }) => (
-  <div className="flex flex-col items-center justify-center h-full text-center p-6">
-    <h2 className="text-xl font-semibold mb-4 text-gray-700">My Memos</h2>
-    <p className="mb-6 text-gray-600">
-      Sign in to create, edit, and manage your personal memos.
-    </p>
-    <button
-      onClick={onSignIn}
-      className="px-5 py-2.5 border rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition duration-150 ease-in-out"
-    >
-      Sign In
-    </button>
-     <p className="mt-4 text-sm text-gray-500">
-        (You can still browse public memos on the left)
-    </p>
-  </div>
-);
-
-// Component to display data fetching errors (if any from useMemos)
-const DataErrorDisplay = ({ memoError }: { memoError: string | null }) => {
-  if (!memoError) return null;
-
-  return (
-    <div className="my-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded mx-4">
-      <p><strong>Data Error:</strong> {memoError}</p>
-      <p className="text-sm">Could not load memo data. Please try again later.</p>
-    </div>
-  );
-};
-
-
-// --- Main Page Component (Redesigned) ---
+// --- Main Page Component (Redesigned based on README) ---
 
 export default function Home() {
   const { data: session, status } = useSession();
-  // Assuming useMemos fetches public memos by default or based on context
-  // Error from this hook likely relates to fetching *public* data if used in MemoExplorer
-  const { error: memoError } = useMemos();
+  // Default view for logged-in users shows their memos in the right pane
+  const [isPublicView, setIsPublicView] = useState(false);
+  // Fetch public memos (potentially for the left pane, hook might need adjustment if context changes)
+  const { error: memoError } = useMemos(true); // Always fetch public for the left pane explorer
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // Memoized Sign-In Handler (Pure function given inputs)
+  // Memoized Sign-In Handler
   const handleSignIn = useCallback(async () => {
-    setAuthError(null); // Clear previous errors
+    setAuthError(null);
     try {
-      const result = await signIn('google', { redirect: false }); // Adjust provider if needed
+      const result = await signIn('google', { redirect: false });
       if (result?.error) {
         const friendlyError = result.error === "OAuthAccountNotLinked"
           ? "Email linked to another provider."
-          : "Sign in failed. Please try again."; // More generic error
-        console.error("Sign in error details:", result.error); // Log detailed error
+          : "Sign in failed. Please try again.";
+        console.error("Sign in error details:", result.error);
         setAuthError(friendlyError);
+      } else {
+         setIsPublicView(false); // Default to 'My Memos' view after sign-in
       }
     } catch (err: any) {
       console.error("Sign in catch block:", err);
       setAuthError('An unexpected error occurred during sign in.');
     }
-  }, []); // No dependencies, created once
+  }, []);
 
-  // Memoized Sign-Out Handler (Pure function given inputs)
+  // Memoized Sign-Out Handler
   const handleSignOut = useCallback(async () => {
     setAuthError(null);
     try {
-      await signOut({ redirect: false }); // Stay on page
+      await signOut({ redirect: false });
+      setIsPublicView(true); // Revert to showing public in right pane if user logs out? Or maybe just let it be handled by session check? Let's default to false. The session check handles the prompt anyway.
+      setIsPublicView(false);
     } catch (err: any) {
       console.error("Sign out catch block:", err);
       setAuthError('An unexpected error occurred during sign out.');
     }
-  }, []); // No dependencies, created once
+  }, []);
+
+  // Toggle between showing user's memos ('My Memos') and the public explorer in the right pane
+  const handleToggleView = () => {
+    setIsPublicView(prev => !prev);
+  };
 
   // --- Render Logic ---
 
-  // Optional: More sophisticated loading state (e.g., skeleton loaders)
-  // if (status === 'loading') {
-  //   return <div className="flex justify-center items-center min-h-screen"><p>Loading...</p></div>;
-  // }
-  // We render the layout even during auth loading for a smoother feel
-
   return (
-    <div className="flex flex-col h-screen max-h-screen overflow-hidden bg-gray-100"> {/* Full height, prevent body scroll */}
+    // Main container: Full height, flex column, prevent body scroll
+    <div className="flex flex-col h-screen max-h-screen overflow-hidden bg-gray-100">
 
       {/* Header */}
-      <header className="flex justify-between items-center p-3 border-b bg-white shadow-sm flex-shrink-0 h-16"> {/* Fixed height */}
+      <header className="flex justify-between items-center p-3 border-b bg-white shadow-sm flex-shrink-0 h-16">
+        {/* Logo */}
         <h1 className="text-xl font-bold text-gray-800 px-2">
-          lkjsxc next
+          lkjsxcnext
         </h1>
+
+        {/* View Toggle Button (Only shown when logged in) */}
+        {session && (
+          <button
+            onClick={handleToggleView}
+            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            aria-label={isPublicView ? 'Switch to My Memos view' : 'Switch to Public Memos view'}
+          >
+            {isPublicView ? 'Show My Memos' : 'Show Public Memos'}
+          </button>
+        )}
+
+        {/* Account / Auth Button */}
         <AuthButton
           session={session}
           status={status}
@@ -150,40 +91,64 @@ export default function Home() {
         />
       </header>
 
-      {/* Display Global Data Fetching Error (if applicable) */}
-      {/* Placed here, it's visible regardless of login state */}
+      {/* Global Data Fetching Error Display (if applicable) */}
       <DataErrorDisplay memoError={memoError} />
 
       {/* Main Content Area (Panes) */}
-      <main className="flex-grow flex flex-row gap-0 overflow-hidden"> {/* Take remaining height, flex row */}
+      {/* Takes remaining height, flex row, gap for visual separation (optional), overflow hidden */}
+      <main className="flex-grow flex flex-row gap-0 overflow-hidden">
 
-        {/* Left Pane: Public Memo Explorer */}
-        <section className="w-1/3 md:w-1/4 lg:w-1/5 border-r bg-white flex flex-col overflow-hidden"> {/* Adjust width as needed */}
-           <h2 className="text-base font-semibold p-3 border-b bg-gray-50 flex-shrink-0 text-gray-600">
+        {/* Left Pane: Public Memo Explorer (Always visible) */}
+        <section className="w-1/3 md:w-1/4 lg:w-1/5 border-r bg-white flex flex-col overflow-hidden">
+           {/* Pane Header */}
+           <h2 className="text-base font-semibold p-3 border-b bg-gray-50 flex-shrink-0 text-gray-600 sticky top-0 z-10">
                 Public Explorer
             </h2>
+            {/* Scrollable Content Area */}
             <div className="flex-grow overflow-y-auto p-2">
-                {/* MemoExplorer likely handles its own loading/error for public memos */}
+                {/* Renders the list of public memos */}
+                {/* MemoExplorer should handle its own internal loading/error state */}
                 <MemoExplorer />
             </div>
         </section>
 
-        {/* Right Pane: User's Editor or Sign-In Prompt */}
-        <section className="flex-grow flex flex-col overflow-hidden bg-white"> {/* Takes remaining width */}
-            {/* Conditional Rendering based on session */}
-            {session ? (
-                <>
-                 <h2 className="text-base font-semibold p-3 border-b bg-gray-50 flex-shrink-0 text-gray-700">
-                    My Memos
-                 </h2>
-                 {/* Note: MemoListEditor should handle its own loading/error for user's memos */}
-                 {/* Pass session or user ID if needed by the component */}
-                 <div className="flex-grow overflow-y-auto p-4">
-                    <MemoListEditor /* userId={session.user.id} */ />
+        {/* Right Pane: Contextual Content (User Memos / Public View / Sign-in Prompt) */}
+        <section className="flex-grow flex flex-col overflow-hidden bg-white">
+            {/* Conditional Rendering based on login status and view toggle */}
+            {status === 'loading' ? (
+                 // Optional: Loading indicator for the right pane while session loads
+                 <div className="flex justify-center items-center h-full">
+                     <p>Loading session...</p>
                  </div>
-                </>
+            ) : session ? (
+                // --- Logged In State ---
+                isPublicView ? (
+                    // Show Public Memos in the right pane
+                    <>
+                      <h2 className="text-base font-semibold p-3 border-b bg-gray-50 flex-shrink-0 text-gray-700 sticky top-0 z-10">
+                          Public Memos (View)
+                      </h2>
+                      <div className="flex-grow overflow-y-auto p-4">
+                          {/* Show MemoExplorer again, maybe for focused view later */}
+                           <MemoExplorer />
+                           {/* TODO: Implement selection from left pane to show detail here? */}
+                      </div>
+                    </>
+                ) : (
+                    // Show User's Private Memos (List + Editor)
+                    <>
+                      <h2 className="text-base font-semibold p-3 border-b bg-gray-50 flex-shrink-0 text-gray-700 sticky top-0 z-10">
+                      MainWindow
+                      </h2>
+                      {/* MemoListEditor handles listing user's memos and the editing UI */}
+                      {/* It should handle its own data fetching, loading, and error states */}
+                      <div className="flex-grow overflow-y-auto p-4">
+                        <MemoListEditor /* Pass userId={session.user.id} if needed */ />
+                      </div>
+                    </>
+                )
             ) : (
-                 // Show prompt when not logged in
+                 // --- Logged Out State ---
                  // No separate title needed as SignInPrompt includes one
                  <div className="flex-grow overflow-y-auto">
                      <SignInPrompt onSignIn={handleSignIn} />
