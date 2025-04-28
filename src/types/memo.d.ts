@@ -3,6 +3,9 @@ export interface Memo {
   title: string;
   content: string | null;
   isPublic: boolean;
+  authorId: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface LoadingStates {

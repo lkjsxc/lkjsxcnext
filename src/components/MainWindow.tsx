@@ -1,0 +1,127 @@
+// src/components/MainWindow.tsx
+import { useState, useEffect, useCallback } from 'react';
+import type { Session } from 'next-auth';
+import type { Memo } from '@/types/memo';
+import EditorTab from './EditorTab'; // We'll create this next
+import ViewerTab from './ViewerTab'; // We'll create this next
+
+interface MainWindowProps {
+  selectedMemoId: string | null;
+  session: Session | null;
+  onMemoDeleted: () => void; // Callback to clear selection in parent
+  onMemoCreated: (newMemoId: string) => void; // Callback to select new memo (for later use)
+}
+
+// --- Mock API Fetch Function (Replace with your actual API calls) ---
+async function fetchMemoById(id: string): Promise<Memo | null> {
+  console.log(`Fetching memo by ID: ${id}`);
+  // const response = await fetch(`/api/memos/${id}`);
+  // if (!response.ok) {
+  //   if (response.status === 404) return null; // Not found
+  //   throw new Error(`Failed to fetch memo ${id}`);
+  // }
+  // return response.json();
+  // Mock Data:
+   await new Promise(resolve => setTimeout(resolve, 250)); // Simulate network delay
+  // Simulate finding a memo or not
+  const mockDb: Record<string, Memo> = {
+    'pub1': { id: 'pub1', title: 'Public Memo Alpha', content: 'Content for Alpha.', isPublic: true, authorId: 'user1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    'pub2': { id: 'pub2', title: 'Another Public Note', content: 'Content for the other note.', isPublic: true, authorId: 'user2', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    'mine1': { id: 'mine1', title: 'My Private Thoughts', content: 'Secret content here.', isPublic: false, authorId: 'currentUser', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    'mine2': { id: 'mine2', title: 'My Shared Idea', content: 'This idea is now public!', isPublic: true, authorId: 'currentUser', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  };
+  const foundMemo = mockDb[id];
+  // If using mock data with 'currentUser', keep it as is for mock purposes
+  // The actual check against session.user.id happens in the component's render logic
+  return foundMemo || null;
+}
+// --- End Mock API ---
+
+export default function MainWindow({ selectedMemoId, session, onMemoDeleted, onMemoCreated }: MainWindowProps) {
+  const [currentMemo, setCurrentMemo] = useState<Memo | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Reset state when selection is cleared
+    if (!selectedMemoId) {
+      setCurrentMemo(null);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
+
+    // Fetch details for the selected memo
+    const loadMemoDetails = async () => {
+      setIsLoading(true);
+      setError(null);
+      setCurrentMemo(null); // Clear previous memo while loading
+      console.log("MainWindow: Fetching details for", selectedMemoId);
+      try {
+        const memo = await fetchMemoById(selectedMemoId);
+        if (memo) {
+          // If using mock data with 'currentUser', replace it with the actual session user ID
+          if (memo.authorId === 'currentUser' && session?.user?.id) {
+            memo.authorId = session.user.id;
+          }
+          setCurrentMemo(memo);
+        } else {
+          setError('Memo not found.');
+          // Optionally, call onMemoDeleted() here if a selected memo suddenly 404s
+          // onMemoDeleted();
+        }
+      } catch (err) {
+        console.error("Error fetching memo details:", err);
+        setError(err instanceof Error ? err.message : 'Failed to load memo details.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadMemoDetails();
+
+  }, [selectedMemoId, session]); // Re-fetch if selected ID changes or session changes (for authorId check)
+
+  // --- Render Logic ---
+
+  if (isLoading) {
+    return <div className="flex justify-center items-center h-full"><p>Loading memo...</p></div>;
+  }
+
+  if (error) {
+    return <div className="p-4 text-red-600 bg-red-100 border border-red-400 rounded">Error: {error}</div>;
+  }
+
+  if (!selectedMemoId) {
+    return (
+      <div className="flex justify-center items-center h-full text-gray-500">
+        <p>Select a memo from the list on the left, or create a new one.</p>
+        {/* Placeholder for future 'Create New' action if initiated from here */}
+      </div>
+    );
+  }
+
+  if (!currentMemo) {
+     // Should ideally be covered by loading/error states, but as a fallback
+     return <div className="flex justify-center items-center h-full text-gray-500">Memo not available.</div>;
+  }
+
+  // Determine if the current user owns the memo
+  const isOwner = session?.user?.id === currentMemo.authorId;
+
+  return (
+    <div className="h-full">
+      {isOwner ? (
+        <EditorTab
+            key={currentMemo.id} // Add key to force re-mount/state reset when memo changes
+            memo={currentMemo}
+            session={session}
+            onMemoDeleted={onMemoDeleted}
+            // Pass onMemoCreated if Editor handles creation flow later
+        />
+      ) : (
+        <ViewerTab memo={currentMemo} />
+      )}
+    </div>
+  );
+}

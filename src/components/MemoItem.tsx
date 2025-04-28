@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Memo, LoadingStates } from '@/types/memo';
 
 interface MemoItemProps {
@@ -11,9 +11,14 @@ interface MemoItemProps {
   onUpdateMemo: (id: string, title: string, content: string, isPublic?: boolean) => Promise<void>;
   onDeleteMemo: (id: string) => Promise<void>;
   onCancelEdit: () => void;
+  // Props for managing the edited state in the parent
+  editedMemoTitle: string;
+  editedMemoContent: string;
+  setEditedMemoTitle: (title: string) => void;
+  setEditedMemoContent: (content: string) => void;
 }
 
-export default function MemoItem({
+const MemoItem: React.FC<MemoItemProps> = ({
   memo,
   editingMemoId,
   loading,
@@ -21,17 +26,11 @@ export default function MemoItem({
   onUpdateMemo,
   onDeleteMemo,
   onCancelEdit,
-}: MemoItemProps) {
-  const [editedMemoTitle, setEditedMemoTitle] = useState(memo.title);
-  const [editedMemoContent, setEditedMemoContent] = useState(memo.content || '');
-
-  // Sync internal state when the memo prop changes (e.g., after update)
-  React.useEffect(() => {
-    setEditedMemoTitle(memo.title);
-    setEditedMemoContent(memo.content || '');
-  }, [memo]);
-
-
+  editedMemoTitle,
+  editedMemoContent,
+  setEditedMemoTitle,
+  setEditedMemoContent,
+}) => {
   const isEditing = editingMemoId === memo.id;
   const isUpdating = loading.updating === memo.id;
   const isDeleting = loading.deleting === memo.id;
@@ -119,4 +118,6 @@ export default function MemoItem({
       )}
     </li>
   );
-}
+};
+
+export default MemoItem;

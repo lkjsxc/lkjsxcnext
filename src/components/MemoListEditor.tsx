@@ -1,19 +1,31 @@
 'use client';
 
 import { useState } from 'react';
-import { useMemos } from '@/hooks/useMemos'; // Import the custom hook
-import MemoItem from './MemoItem'; // Import the new MemoItem component
+import { Memo, LoadingStates } from '@/types/memo'; // Import necessary types
+import MemoItem from './MemoItem'; // Import the MemoItem component
 
-export default function MemoListEditor() {
+interface MemoListEditorProps {
+  memos: Memo[];
+  loading: LoadingStates;
+  error: string | null;
+  createMemo: (title: string, content: string) => Promise<void>;
+  updateMemo: (id: string, title: string, content: string, isPublic?: boolean) => Promise<void>;
+  deleteMemo: (id: string) => Promise<void>;
+}
+
+const MemoListEditor: React.FC<MemoListEditorProps> = ({
+  memos,
+  loading,
+  error,
+  createMemo,
+  updateMemo,
+  deleteMemo,
+}) => {
   const [newMemoTitle, setNewMemoTitle] = useState('');
   const [newMemoContent, setNewMemoContent] = useState('');
   const [editingMemoId, setEditingMemoId] = useState<string | null>(null);
   const [editedMemoTitle, setEditedMemoTitle] = useState('');
   const [editedMemoContent, setEditedMemoContent] = useState('');
-
-  // Use the custom hook to manage memo state and API interactions
-  // Pass false to useMemos to indicate we want the user's private memos
-  const { memos, loading, error, createMemo, updateMemo, deleteMemo } = useMemos(false);
 
   const handleCreateMemo = async () => {
     try {
@@ -21,8 +33,8 @@ export default function MemoListEditor() {
       setNewMemoTitle('');
       setNewMemoContent('');
     } catch (err) {
-      // Error handling is done within the hook, but we can add more here if needed
       console.error("Error creating memo in component:", err);
+      // Error display is handled by the hook/parent component, but could add local feedback
     }
   };
 
@@ -35,6 +47,7 @@ export default function MemoListEditor() {
       }
     } catch (err) {
        console.error(`Error updating memo ${id} in component:`, err);
+       // Error display is handled by the hook/parent component
     }
   };
 
@@ -47,9 +60,9 @@ export default function MemoListEditor() {
       await deleteMemo(id);
     } catch (err) {
        console.error(`Error deleting memo ${id} in component:`, err);
+       // Error display is handled by the hook/parent component
     }
   };
-
 
   const handleEditClick = (memo: { id: string; title: string; content: string | null }) => {
     setEditingMemoId(memo.id);
@@ -63,13 +76,14 @@ export default function MemoListEditor() {
     setEditedMemoContent('');
   };
 
-
   return (
-    <div className="w-full md:w-1/2 p-4 border rounded-md shadow-sm bg-white dark:bg-gray-800 dark:border-gray-700">
-      <h2 className="text-2xl font-bold mb-4">Your Memos</h2>
+    <div className="w-full p-4"> {/* Adjusted width as it's now in a pane */}
+      {/* Removed h2 as it's in the parent pane header */}
       {loading.fetching ? (
         <p>Loading memos...</p>
-      ) : memos.length === 0 && !error ? (
+      ) : error ? (
+         <p className="text-red-500">Error loading memos: {error}</p>
+      ) : memos.length === 0 ? (
          <p>You haven't created any memos yet.</p>
       ): (
         <ul className="space-y-4">
@@ -78,11 +92,15 @@ export default function MemoListEditor() {
               key={memo.id}
               memo={memo}
               editingMemoId={editingMemoId}
-              loading={loading}
+              loading={loading} // Pass loading state for individual item actions
               onEditClick={handleEditClick}
               onUpdateMemo={handleUpdateMemo}
               onDeleteMemo={handleDeleteMemo}
               onCancelEdit={handleCancelEdit}
+              editedMemoTitle={editedMemoTitle} // Pass down edited state
+              editedMemoContent={editedMemoContent} // Pass down edited state
+              setEditedMemoTitle={setEditedMemoTitle} // Pass down state setters
+              setEditedMemoContent={setEditedMemoContent} // Pass down state setters
             />
           ))}
         </ul>
@@ -108,13 +126,15 @@ export default function MemoListEditor() {
           disabled={loading.creating}
         />
         <button
-          onClick={handleCreateMemo} // Use the new handler
+          onClick={handleCreateMemo}
           className={`px-4 py-2 border rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed`}
-          disabled={loading.creating || !newMemoTitle.trim()} // Disable if loading or title is empty
+          disabled={loading.creating || !newMemoTitle.trim()}
         >
           {loading.creating ? 'Creating...' : 'Create Memo'}
         </button>
       </div>
     </div>
   );
-}
+};
+
+export default MemoListEditor;
