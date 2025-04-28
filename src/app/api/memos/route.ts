@@ -15,7 +15,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  try {
     const whereClause: any = {};
 
     if (scope === 'private' && session?.user?.id) {
@@ -31,10 +30,6 @@ export async function GET(request: Request) {
       },
     });
     return NextResponse.json(memos);
-  } catch (error) {
-    console.error("Error fetching memos:", error);
-    return NextResponse.json({ message: "Error fetching memos" }, { status: 500 });
-  }
 }
 
 export async function POST(request: Request) {
@@ -44,7 +39,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  try {
     const { title, content, isPublic } = await request.json();
     const newMemo = await prisma.memo.create({
       data: {
@@ -61,8 +55,4 @@ export async function POST(request: Request) {
     broadcastMessage(JSON.stringify({ type: 'memo_created', payload: newMemo }));
  
     return NextResponse.json(newMemo, { status: 201 });
-  } catch (error) {
-    console.error("Error creating memo:", error);
-    return NextResponse.json({ message: "Error creating memo" }, { status: 500 });
-  }
 }

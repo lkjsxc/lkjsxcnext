@@ -9,7 +9,6 @@ const prisma = new PrismaClient();
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   const { id } = params;
 
-  try {
     const memo = await prisma.memo.findUnique({
       where: {
         id: id,
@@ -21,10 +20,6 @@ export async function GET(request: Request, { params }: { params: { id: string }
     }
 
     return NextResponse.json(memo);
-  } catch (error) {
-    console.error("Error fetching memo:", error);
-    return NextResponse.json({ message: "Error fetching memo" }, { status: 500 });
-  }
 }
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
@@ -37,7 +32,6 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   const { id } = params;
   const { title, content, isPublic } = await request.json();
 
-  try {
     const updatedMemo = await prisma.memo.update({
       where: {
         id: id,
@@ -56,10 +50,6 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     broadcastMessage(JSON.stringify({ type: 'memo_updated', payload: updatedMemo }));
  
     return NextResponse.json(updatedMemo);
-  } catch (error) {
-    console.error("Error updating memo:", error);
-    return NextResponse.json({ message: "Error updating memo" }, { status: 500 });
-  }
 }
 
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
@@ -71,7 +61,6 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 
   const { id } = params;
 
-  try {
     await prisma.memo.delete({
       where: {
         id: id,
@@ -85,8 +74,4 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     broadcastMessage(JSON.stringify({ type: 'memo_deleted', payload: { id } }));
  
     return NextResponse.json({ message: "Memo deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting memo:", error);
-    return NextResponse.json({ message: "Error deleting memo" }, { status: 500 });
-  }
 }

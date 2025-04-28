@@ -2,6 +2,9 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { IncomingMessage } from 'http'; // Import type
 import type { Duplex } from 'stream';       // Import type
+import { parse } from 'url'; // Import parse
+import { handlePingWebSocketConnection } from '../websocketHandlers/pingHandler'; // Import ping handler
+import { handleMemoWebSocketConnection } from '../websocketHandlers/memoHandler'; // Import memo handler
 
 let wss: WebSocketServer | null = null;
 
@@ -14,27 +17,54 @@ export const initializeWebSocketServer = (): WebSocketServer => {
 
     // ★Delete: server.on('upgrade', ...) log is not needed in this file (handled in server.ts)
 
-    // ★Change: Add req to connection handler (optional for IP logging etc.)
+    // Add req to connection handler to check the path and delegate
     wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
       const clientIp = req.socket.remoteAddress || req.headers['x-forwarded-for'] || 'Unknown IP';
-      console.log(`Client connected from ${clientIp}`); // Log which IP connected
+      const { pathname } = parse(req.url || '', true); // Parse URL here
 
-      ws.on('message', (message: Buffer | string) => { // message might be a Buffer
-         // Convert Buffer to string
-         const messageString = message.toString();
-         console.log(`Received message => ${messageString}`);
-         // Handle incoming messages from clients if needed
+      console.log(`Client connected from ${clientIp} to path: ${pathname}`); // Log which IP connected and path
+
+      // Add keep-alive mechanism
+      // @ts-ignore - Add property to WebSocket instance
+      ws.isAlive = true;
+      ws.on('pong', () => {
+        // @ts-ignore
+        ws.isAlive = true;
       });
 
-      ws.on('close', (code, reason) => {
-        // reason might be a Buffer, so convert to string
-        const reasonString = reason instanceof Buffer ? reason.toString() : 'No reason given';
-        console.log(`Client disconnected. Code: ${code}, Reason: ${reasonString}`);
+      // Ping interval (e.g., every 30 seconds)
+      const pingInterval = setInterval(() => {
+        // @ts-ignore
+        if (ws.isAlive === false) {
+          console.log(`WebSocket connection to ${pathname} from ${clientIp} timed out. Terminating.`);
+          return ws.terminate();
+        }
+
+        // @ts-ignore
+        ws.isAlive = false;
+        ws.ping();
+      }, 30000); // Send ping every 30 seconds
+
+      // Clear interval on close
+      ws.on('close', () => {
+        console.log(`WebSocket connection to ${pathname} from ${clientIp} closed.`);
+        clearInterval(pingInterval);
       });
 
-      ws.on('error', (error: Error) => {
-        console.error('WebSocket client connection error:', error);
-      });
+
+      // Delegate handling based on the path
+      if (pathname === '/api/memos/ws') {
+        console.log('Delegating connection to memo handler...');
+        handleMemoWebSocketConnection(ws, req);
+      } else if (pathname === '/api/ping/ws') {
+        console.log('Delegating connection to ping handler...');
+        // Call the ping handler function
+        handlePingWebSocketConnection(ws, req);
+      } else {
+        console.warn(`No specific handler for path ${pathname}. Closing connection.`);
+        ws.close(1000, 'No handler for this path');
+      }
+
     });
 
     wss.on('error', (error: Error) => {

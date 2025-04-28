@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { Memo, LoadingStates } from '../types/memo';
 import { fetchPublicMemos, fetchUserMemos, createMemoApi, updateMemoApi, deleteMemoApi } from '../utils/memoApi';
-import { connectMemoWebSocket } from '../utils/memoWebSocket'; // Import the WebSocket client function
+import { initializeMemoWebSocket, subscribeToMemoMessages, unsubscribeFromMemoMessages } from '../utils/memoWebSocket'; // Import the refactored WebSocket functions
 
 interface UseMemosResult {
   memos: Memo[];
@@ -28,16 +28,9 @@ export const useMemos = (isPublicView: boolean): UseMemosResult => {
   const handleApiCall = useCallback(async (apiCall: () => Promise<any>, loadingKey: keyof LoadingStates, successCallback: (data: any) => void, id?: string) => {
     setLoading((prev: LoadingStates) => ({ ...prev, [loadingKey]: id || true }));
     setError(null);
-    try {
-      const data = await apiCall();
-      successCallback(data);
-    } catch (err) {
-      console.error(`Failed to perform API call for ${String(loadingKey)}:`, err);
-      setError(err instanceof Error ? err.message : `An unknown error occurred during ${String(loadingKey)}.`);
-      throw err; // Re-throw to allow component to handle errors
-    } finally {
-      setLoading((prev: LoadingStates) => ({ ...prev, [loadingKey]: id ? null : false }));
-    }
+    const data = await apiCall();
+    successCallback(data);
+    setLoading((prev: LoadingStates) => ({ ...prev, [loadingKey]: id ? null : false }));
   }, []);
 
   const fetchMemos = useCallback(async () => {
@@ -57,9 +50,12 @@ export const useMemos = (isPublicView: boolean): UseMemosResult => {
 
   // WebSocket integration
   useEffect(() => {
-    console.log('useMemos useEffect: Establishing WebSocket connection');
-    const handleWebSocketMessage = (data: any) => {
-      console.log('Received WebSocket message:', data);
+    // Initialize the shared WebSocket connection if it hasn't been already
+    // This is safe to call multiple times; the manager handles the single connection.
+    initializeMemoWebSocket();
+
+    const handleMemoMessage = (data: any) => {
+      console.log('Received memo WebSocket message:', data);
       // Update memos state based on the message type
       switch (data.type) {
         case 'memo_created':
@@ -75,25 +71,17 @@ export const useMemos = (isPublicView: boolean): UseMemosResult => {
           setMemos(prevMemos => prevMemos.filter(memo => memo.id !== data.payload.id));
           break;
         default:
-          console.warn('Unknown WebSocket message type:', data.type);
+          console.warn('Unknown memo WebSocket message type:', data.type);
       }
     };
 
-    const handleWebSocketError = (error: Event) => {
-      console.error('WebSocket error:', error);
-      // Handle WebSocket errors, e.g., attempt to reconnect
-      // For simplicity, we'll just log the error for now.
-    };
+    // Subscribe to memo-specific messages
+    subscribeToMemoMessages(handleMemoMessage);
 
-    // Establish WebSocket connection
-    const ws = connectMemoWebSocket(handleWebSocketMessage, handleWebSocketError);
-
-    // Clean up the WebSocket connection when the component unmounts
+    // Clean up the subscription when the component unmounts
     return () => {
-      console.log('useMemos useEffect cleanup: Closing WebSocket connection');
-      if (ws && ws.readyState !== WebSocket.CLOSED) {
-        ws.close();
-      }
+      console.log('useMemos useEffect cleanup: Unsubscribing from memo messages');
+      unsubscribeFromMemoMessages(handleMemoMessage);
     };
   }, []); // Empty dependency array ensures this effect runs only once on mount and cleans up on unmount
 
