@@ -13,32 +13,36 @@ interface UseAutoSaveOptions {
   interval?: number; // in milliseconds
 }
 
+import { use_central_polling } from './use_central_polling';
+
+interface AutoSaveData {
+  title: string;
+  content: string;
+  isPublic: boolean;
+}
+
+interface UseAutoSaveOptions {
+  memoId: string;
+  data: AutoSaveData;
+  onSave: (memoId: string, data: AutoSaveData) => Promise<void>;
+  interval?: number; // in milliseconds
+}
+
 export function useAutoSave({ memoId, data, onSave, interval = 5000 }: UseAutoSaveOptions) {
   const savedDataRef = useRef<AutoSaveData>(data);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Update the ref whenever the data changes
   useEffect(() => {
     savedDataRef.current = data;
   }, [data]);
 
-  useEffect(() => {
-    // Clear any existing interval
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
+  // Use central polling for the auto-save interval
+  use_central_polling({
+    shouldPoll: !!memoId, // Only poll if memoId is provided
+    fetchFunction: () => onSave(memoId, savedDataRef.current),
+    interval: interval,
+    dependencies: [memoId, onSave, data], // Re-configure polling if these change
+  });
 
-    // Set up the new interval
-    intervalRef.current = setInterval(() => {
-      // Call the save function with the latest data from the ref
-      onSave(memoId, savedDataRef.current);
-    }, interval);
-
-    // Cleanup function to clear the interval when the component unmounts
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [memoId, onSave, interval]); // Re-run effect if memoId, onSave, or interval changes
+  // No explicit return needed as use_central_polling handles the interval lifecycle
 }

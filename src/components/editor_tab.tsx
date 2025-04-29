@@ -2,35 +2,22 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { Session } from 'next-auth';
 import { useAutoSave } from '@/hooks/use_auto_save';
+import { useMemoUpdateQueue } from '@/hooks/useMemoUpdateQueue'; // Import the update queue hook
 import type { Memo } from '@/types/memo';
 
 interface EditorTabProps {
   memo: Memo;
   session: Session | null; // Needed for API calls potentially
   onMemoDeleted: () => void;
+  onMemoChange: (updatedMemo: Memo) => void; // Add onMemoChange prop
   // Add onSaveSuccess callback if needed
 }
 
 
-// --- Mock API Update/Delete Functions (Replace with actual calls) ---
-async function updateMemoApi(id: string, data: Partial<Pick<Memo, 'title' | 'content' | 'isPublic'>>): Promise<Memo> {
-    const response = await fetch(`/api/memo/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error('Failed to update memo');
-    return response.json();
-}
-
-async function deleteMemoApi(id: string): Promise<void> {
-    const response = await fetch(`/api/memo/${id}`, { method: 'DELETE' });
-    if (!response.ok) throw new Error('Failed to delete memo');
-}
-// --- End Mock API ---
+import { updateMemoApi, deleteMemoApi } from '@/utils/memo_api';
 
 
-export default function EditorTab({ memo, session, onMemoDeleted }: EditorTabProps) {
+export default function EditorTab({ memo, session, onMemoDeleted, onMemoChange }: EditorTabProps) {
   const [title, setTitle] = useState(memo.title);
   const [content, setContent] = useState(memo.content ?? '');
   const [isPublic, setIsPublic] = useState(memo.isPublic);
@@ -62,7 +49,7 @@ export default function EditorTab({ memo, session, onMemoDeleted }: EditorTabPro
     setError(null);
     setSaveSuccess(false);
     try {
-      await updateMemoApi(memo.id, { title, content, isPublic });
+      await updateMemoApi(memo.id, title, content, isPublic);
       setSaveSuccess(true);
       // Optionally clear success message after a few seconds
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -80,25 +67,27 @@ export default function EditorTab({ memo, session, onMemoDeleted }: EditorTabPro
 
   // Auto-save hook
   // Wrapper function for auto-save
-  const autoSaveMemo = useCallback(async (id: string, data: { title: string; content: string; isPublic: boolean }) => {
-    try {
-      // Call the existing update API function
-      await updateMemoApi(id, data);
-      // Optionally handle success feedback here if needed, but useAutoSave doesn't expect a return value
-      // console.log('Auto-saved successfully');
-    } catch (err) {
-      // Handle errors, perhaps log them or set a specific auto-save error state
-      console.error('Auto-save failed:', err);
-      // You might want to set a different state variable for auto-save errors
-      // setError(err instanceof Error ? `Auto-save failed: ${err.message}` : 'Auto-save failed.');
-    }
-  }, []); // Dependencies for useCallback if needed, currently none as it uses passed args
+  // Get the addUpdate function from the queue hook
+  const { addUpdate } = useMemoUpdateQueue();
+
+  // Auto-save function that adds to the queue
+  const queueAutoSave = useCallback(async (memoId: string, data: { title: string; content: string; isPublic: boolean }) => {
+    // Add the update to the queue
+    addUpdate({
+      id: memoId,
+      title: data.title,
+      content: data.content,
+      isPublic: data.isPublic,
+    });
+    // Since addUpdate is synchronous, we can return a resolved promise
+    return Promise.resolve();
+  }, [addUpdate]); // Depend on addUpdate
 
   // Auto-save hook
   useAutoSave({
     memoId: memo.id,
     data: { title, content, isPublic },
-    onSave: autoSaveMemo, // Use the wrapper function
+    onSave: queueAutoSave, // Use the function that adds to the queue
     interval: 5000, // Save every 5 seconds
   });
 
@@ -131,7 +120,10 @@ export default function EditorTab({ memo, session, onMemoDeleted }: EditorTabPro
                     <input
                         type="checkbox"
                         checked={isPublic}
-                        onChange={(e) => setIsPublic(e.target.checked)}
+                        onChange={(e) => {
+                          setIsPublic(e.target.checked);
+                          onMemoChange({ ...memo, title, content, isPublic: e.target.checked });
+                        }}
                         className="form-checkbox h-4 w-4 text-blue-600"
                         disabled={isSaving || isDeleting}
                     />
@@ -164,14 +156,20 @@ export default function EditorTab({ memo, session, onMemoDeleted }: EditorTabPro
         <input
           type="text"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            onMemoChange({ ...memo, title: e.target.value, content, isPublic });
+          }}
           placeholder="Memo Title"
           className="p-2 border rounded text-lg font-medium focus:ring-2 focus:ring-blue-300 focus:outline-none"
           disabled={isSaving || isDeleting}
         />
         <textarea
           value={content}
-          onChange={(e) => setContent(e.target.value)}
+          onChange={(e) => {
+            setContent(e.target.value);
+            onMemoChange({ ...memo, title, content: e.target.value, isPublic });
+          }}
           placeholder="Memo Content..."
           className="p-2 border rounded flex-1 resize-none focus:ring-2 focus:ring-blue-300 focus:outline-none" // flex-1 makes it take available space
           rows={10} // Adjust initial rows as needed

@@ -4,6 +4,7 @@ import type { Session } from 'next-auth';
 import type { Memo } from '@/types/memo';
 import EditorTab from './editor_tab'; // We'll create this next
 import ViewerTab from './viewer_tab'; // We'll create this next
+import { useSyncManager } from '@/hooks/use_sync_manager'; // Import the new hook
 
 interface MainWindowProps {
   selectedMemoId: string | null;
@@ -13,74 +14,47 @@ interface MainWindowProps {
 }
 
 // --- Mock API Fetch Function (Replace with your actual API calls) ---
-async function fetchMemoById(id: string): Promise<Memo | null> {
-  const response = await fetch(`/api/memo/${id}`);
-  if (!response.ok) {
-    if (response.status === 404) return null; // Not found
-    throw new Error(`Failed to fetch memo ${id}`);
-  }
-  return response.json();
-}
+// --- Mock API Fetch Function (Replace with your actual API calls) ---
+// async function fetchMemoById(id: string): Promise<Memo | null> {
+//   const response = await fetch(`/api/memo/${id}`);
+//   if (!response.ok) {
+//     if (response.status === 404) return null; // Not found
+//     throw new Error(`Failed to fetch memo ${id}`);
+//   }
+//   return response.json();
+// }
 // --- End Mock API ---
 
 export default function MainWindow({ selectedMemoId, session, onMemoDeleted, onMemoCreated }: MainWindowProps) {
   const [currentMemo, setCurrentMemo] = useState<Memo | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false); // Keep loading state for initial load/selection change
+  const [error, setError] = useState<string | null>(null); // Keep error state
 
+  // Use the new sync manager
+  const { addMemoUpdateToQueue, syncState } = useSyncManager();
+
+  // Determine if the current user owns the currently loaded memo
+  const isOwner = session?.user?.id === currentMemo?.authorId;
+
+  // Effect for initial memo load when selectedMemoId changes or component mounts
+  // This will now rely on the data fetched by useSyncManager
+
+  // Effect to update currentMemo when syncState.memos changes and selectedMemoId is set
   useEffect(() => {
-    const loadMemoDetails = async () => {
-      // Reset state when selection is cleared
-      if (!selectedMemoId) {
+    if (selectedMemoId && syncState.memos) {
+      const memo = syncState.memos.find(m => m.id === selectedMemoId);
+      if (memo) {
+        setCurrentMemo(memo);
+      } else {
+        // Memo not found in synced data, it might have been deleted on another client
         setCurrentMemo(null);
-        setError(null);
-        setIsLoading(false);
-        return;
+        onMemoDeleted(); // Clear selection
       }
-
-      setIsLoading(true);
-      setError(null);
-      setCurrentMemo(null); // Clear previous memo while loading
-      try {
-        const memo = await fetchMemoById(selectedMemoId);
-        if (memo) {
-          // If using mock data with 'currentUser', replace it with the actual session user ID
-          if (memo.authorId === 'currentUser' && session?.user?.id) {
-            memo.authorId = session.user.id;
-          }
-          setCurrentMemo(memo);
-        } else {
-          setError('Memo not found.');
-          // Optionally, call onMemoDeleted() here if a selected memo suddenly 404s
-          // onMemoDeleted();
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load memo details.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadMemoDetails(); // Initial load
-
-    // Determine if the current user owns the memo *inside* the effect
-    const isOwner = session?.user?.id === currentMemo?.authorId;
-
-    // Set up polling if a memo is selected AND the user is NOT the owner
-    // This prevents the editor from being updated by server changes while open
-    let intervalId: NodeJS.Timeout | undefined;
-    if (selectedMemoId && !isOwner) {
-      intervalId = setInterval(loadMemoDetails, 10000); // Poll every 10 seconds
+    } else if (!selectedMemoId) {
+       setCurrentMemo(null);
     }
+  }, [selectedMemoId, syncState.memos, onMemoDeleted]);
 
-    return () => {
-      // Cleanup interval on unmount or dependency change
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-
-  }, [selectedMemoId, session]); // Re-fetch if selected ID changes or session changes (for authorId check)
 
   // --- Render Logic ---
 
@@ -107,7 +81,6 @@ export default function MainWindow({ selectedMemoId, session, onMemoDeleted, onM
   }
 
   // Determine if the current user owns the memo (This is now only used for rendering)
-  const isOwner = session?.user?.id === currentMemo.authorId;
 
   return (
     <div className="h-full">
@@ -117,7 +90,17 @@ export default function MainWindow({ selectedMemoId, session, onMemoDeleted, onM
             memo={currentMemo}
             session={session}
             onMemoDeleted={onMemoDeleted}
-            // onMemoChange={onMemoChange} // Pass onMemoChange to EditorTab
+            onMemoChange={(updatedMemo) => {
+              // Add the updated memo to the sync queue
+              addMemoUpdateToQueue({
+                id: updatedMemo.id,
+                title: updatedMemo.title,
+                content: updatedMemo.content,
+                isPublic: updatedMemo.isPublic,
+              });
+              // Optionally update local state immediately for responsiveness
+              setCurrentMemo(updatedMemo);
+            }}
             // Pass onMemoCreated if Editor handles creation flow later
         />
       ) : (

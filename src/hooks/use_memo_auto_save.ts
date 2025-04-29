@@ -37,5 +37,5 @@ export const use_memo_auto_save = ({ selectedMemoId, memos, updateMemo }: UseMem
     // Update the ref to the current selected memo ID
     previousMemoIdRef.current = selectedMemoId;
 
-  }, [selectedMemoId, memos, addUpdate]); // Depend on selectedMemoId, memos, and addUpdate
+  }, [selectedMemoId, addUpdate]); // Depend on selectedMemoId and addUpdate
 };
