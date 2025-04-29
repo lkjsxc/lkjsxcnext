@@ -36,12 +36,12 @@ export default function MainWindow({ selectedMemoId, session, onMemoDeleted, onM
       setIsLoading(false);
       return;
     }
- 
+
     // Fetch details for the selected memo
     const loadMemoDetails = async () => {
       setIsLoading(true);
       setError(null);
-      // setCurrentMemo(null); // Keep previous memo while loading to avoid flicker
+      setCurrentMemo(null); // Clear previous memo while loading
       try {
         const memo = await fetchMemoById(selectedMemoId);
         if (memo) {
@@ -53,27 +53,20 @@ export default function MainWindow({ selectedMemoId, session, onMemoDeleted, onM
         } else {
           setError('Memo not found.');
           // Optionally, call onMemoDeleted() here if a selected memo suddenly 404s
-          onMemoDeleted(); // Clear selection if memo is not found
+          // onMemoDeleted();
         }
       } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load memo details.');
         setError(err instanceof Error ? err.message : 'Failed to load memo details.');
       } finally {
         setIsLoading(false);
       }
     };
- 
-    loadMemoDetails(); // Initial fetch
- 
-    const intervalId = setInterval(() => {
-      if (selectedMemoId) { // Only poll if a memo is selected
-        loadMemoDetails();
-      }
-    }, 5000); // Poll every 5 seconds
- 
-    return () => clearInterval(intervalId); // Cleanup interval
- 
-  }, [selectedMemoId, session, onMemoDeleted]); // Re-fetch if selected ID changes, session changes, or onMemoDeleted changes
- 
+
+    loadMemoDetails();
+
+  }, [selectedMemoId, session]); // Re-fetch if selected ID changes or session changes (for authorId check)
+
   // --- Render Logic ---
 
   if (isLoading) {

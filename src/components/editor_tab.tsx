@@ -1,6 +1,7 @@
 // src/components/EditorTab.tsx
 import { useState, useCallback, useEffect } from 'react';
 import type { Session } from 'next-auth';
+import { useAutoSave } from '@/hooks/use_auto_save';
 import type { Memo } from '@/types/memo';
 
 interface EditorTabProps {
@@ -70,6 +71,30 @@ export default function EditorTab({ memo, session, onMemoDeleted }: EditorTabPro
     }
   }, [memo.id, title, content, isPublic]);
 
+  // Auto-save hook
+  // Wrapper function for auto-save
+  const autoSaveMemo = useCallback(async (id: string, data: { title: string; content: string; isPublic: boolean }) => {
+    try {
+      // Call the existing update API function
+      await updateMemoApi(id, data);
+      // Optionally handle success feedback here if needed, but useAutoSave doesn't expect a return value
+      // console.log('Auto-saved successfully');
+    } catch (err) {
+      // Handle errors, perhaps log them or set a specific auto-save error state
+      console.error('Auto-save failed:', err);
+      // You might want to set a different state variable for auto-save errors
+      // setError(err instanceof Error ? `Auto-save failed: ${err.message}` : 'Auto-save failed.');
+    }
+  }, []); // Dependencies for useCallback if needed, currently none as it uses passed args
+
+  // Auto-save hook
+  useAutoSave({
+    memoId: memo.id,
+    data: { title, content, isPublic },
+    onSave: autoSaveMemo, // Use the wrapper function
+    interval: 5000, // Save every 5 seconds
+  });
+
   const handleDelete = useCallback(async () => {
      if (!window.confirm(`Are you sure you want to delete "${memo.title || 'this memo'}"?`)) {
        return;
@@ -120,17 +145,6 @@ export default function EditorTab({ memo, session, onMemoDeleted }: EditorTabPro
                 </button>
 
                 {/* Save Button */}
-                <button
-                    onClick={handleSave}
-                    disabled={isSaving || isDeleting}
-                    className={`px-4 py-1 rounded text-sm font-semibold ${
-                        isSaving
-                        ? 'bg-gray-400 text-gray-800 cursor-not-allowed'
-                        : 'bg-blue-500 hover:bg-blue-600 text-white'
-                    }`}
-                >
-                    {isSaving ? 'Saving...' : 'Save'}
-                </button>
             </div>
         </div>
 
