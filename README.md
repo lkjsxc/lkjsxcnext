@@ -20,7 +20,7 @@ A simple memo application built with Next.js, Tailwind CSS, NextAuth.js, and Pri
 
 1.  **Clone the repository:**
     ```bash
-    git clone <repository_url>
+    git clone https://github.com/lkjsxc/lkjsxcnext
     cd lkjsxcnext
     ```
 2.  **Install dependencies:**
