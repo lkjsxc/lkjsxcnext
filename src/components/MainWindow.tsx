@@ -29,16 +29,15 @@ export default function MainWindow({ selectedMemoId, session, onMemoDeleted, onM
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Reset state when selection is cleared
-    if (!selectedMemoId) {
-      setCurrentMemo(null);
-      setError(null);
-      setIsLoading(false);
-      return;
-    }
-
-    // Fetch details for the selected memo
     const loadMemoDetails = async () => {
+      // Reset state when selection is cleared
+      if (!selectedMemoId) {
+        setCurrentMemo(null);
+        setError(null);
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
       setError(null);
       setCurrentMemo(null); // Clear previous memo while loading
@@ -57,13 +56,25 @@ export default function MainWindow({ selectedMemoId, session, onMemoDeleted, onM
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load memo details.');
-        setError(err instanceof Error ? err.message : 'Failed to load memo details.');
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadMemoDetails();
+    loadMemoDetails(); // Initial load
+
+    // Set up polling if a memo is selected
+    let intervalId: NodeJS.Timeout | undefined;
+    if (selectedMemoId) {
+      intervalId = setInterval(loadMemoDetails, 10000); // Poll every 10 seconds
+    }
+
+    return () => {
+      // Cleanup interval on unmount or dependency change
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
 
   }, [selectedMemoId, session]); // Re-fetch if selected ID changes or session changes (for authorId check)
 
@@ -102,6 +113,7 @@ export default function MainWindow({ selectedMemoId, session, onMemoDeleted, onM
             memo={currentMemo}
             session={session}
             onMemoDeleted={onMemoDeleted}
+            // onMemoChange={onMemoChange} // Pass onMemoChange to EditorTab
             // Pass onMemoCreated if Editor handles creation flow later
         />
       ) : (

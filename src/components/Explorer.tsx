@@ -1,80 +1,46 @@
 // src/components/Explorer.tsx
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import type { Session } from 'next-auth';
 import type { Memo } from '@/types/memo'; // Adjust path as needed
-import { fetchPublicmemo, fetchUsermemo, createMemoApi } from '@/utils/memo_api'; // Import actual API functions
+import { use_memo } from '@/hooks/use_memo'; // Import the use_memo hook
 
 interface ExplorerProps {
   session: Session | null;
   onSelectMemo: (memoId: string | null) => void;
   selectedMemoId: string | null;
   onCreateNewMemo: (newMemoId: string) => void; // Add onCreateNewMemo prop
+  onMemoChange: () => void; // Add onMemoChange prop
 }
 
 
-export default function Explorer({ session, onSelectMemo, selectedMemoId, onCreateNewMemo }: ExplorerProps) {
-  const [memo, setmemo] = useState<Memo[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadmemo = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const publicmemoPromise = fetchPublicmemo();
-      const usermemoPromise = session ? fetchUsermemo() : Promise.resolve([]); // Fetch user memo only if logged in
-
-      const [publicmemo, usermemo] = await Promise.all([
-          publicmemoPromise,
-          usermemoPromise
-      ]);
-
-      // Combine and deduplicate memo
-      // Prioritize user's version if they have edited a public memo
-      const combinedmemo: Record<string, Memo> = {};
-      publicmemo.forEach(memo => combinedmemo[memo.id] = memo);
-      usermemo.forEach(memo => combinedmemo[memo.id] = memo); // User's memo overwrite public ones with same ID
-
-      // Sort by date (newest first) - adjust if needed
-      const sortedmemo = Object.values(combinedmemo).sort(
-          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-
-      setmemo(sortedmemo);
-
-    } catch (err) {
-      console.error("Error loading memo:", err);
-      setError(err instanceof Error ? err.message : 'Failed to load memo.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [session]); // Reload when session changes
-
-// Effect to load memo when session changes or component mounts
-  useEffect(() => {
-    loadmemo();
-  }, [loadmemo]); // Dependency array includes the memoized function
-   // Dependency array includes the memoized function
+export default function Explorer({ session, onSelectMemo, selectedMemoId, onCreateNewMemo, onMemoChange }: ExplorerProps) {
+  // Use the use_memo hook to fetch and manage memo data
+  const { memo, loading, error, createMemo, fetchmemo } = use_memo('all'); // Fetch all memos (user and public) for Explorer
 
   const handleCreateNewMemo = useCallback(async () => {
     if (!session) {
       alert('You must be logged in to create a new memo.');
       return;
     }
-    setIsLoading(true);
-    setError(null);
     try {
-      const newMemo = await createMemoApi('', ''); // Create with empty title and content
-      onCreateNewMemo(newMemo.id); // Call the prop to select the new memo
-      loadmemo(); // Reload the list to show the new memo
+      const newMemoId = await createMemo('', ''); // Create with empty title and content and get the new ID
+      // The use_memo hook will refetch data after creation,
+      // so we don't need to call fetchmemo explicitly here.
+      // We still need to call onCreateNewMemo and onMemoChange for parent component logic.
+      if (newMemoId) {
+        onCreateNewMemo(newMemoId); // Select the newly created memo
+        onMemoChange(); // Notify parent of change
+      }
     } catch (err) {
       console.error("Error creating new memo:", err);
-      setError(err instanceof Error ? err.message : 'Failed to create new memo.');
-    } finally {
-      setIsLoading(false);
+      // Error handling is now done within the use_memo hook, but we can still show a local alert
+      alert(`Failed to create new memo: ${error || 'Unknown error'}`);
     }
-  }, [session, onCreateNewMemo, loadmemo]); // Dependencies
+  }, [session, createMemo, onCreateNewMemo, onMemoChange, error]); // Dependencies
+
+
+  // Determine loading state from the hook
+  const isLoading = loading.fetching || loading.creating;
 
 
   // --- Render Logic ---
@@ -117,7 +83,7 @@ export default function Explorer({ session, onSelectMemo, selectedMemoId, onCrea
                    {memo.title || '(Untitled)'}
                 </span>
                 {/* Optional: Add a small indicator for user's own memo */}
-                {session && memo.authorId === session.user.id && (
+                {session && memo.authorId === session.user?.id && ( // Use optional chaining for session.user
                    <span className="text-xs text-blue-600 ml-1">(Mine)</span>
                 )}
                 {/* Optional: Add indicator for public/private */}

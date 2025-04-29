@@ -1,5 +1,5 @@
 // src/components/EditorTab.tsx
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { Session } from 'next-auth';
 import { useAutoSave } from '@/hooks/use_auto_save';
 import type { Memo } from '@/types/memo';
@@ -39,16 +39,23 @@ export default function EditorTab({ memo, session, onMemoDeleted }: EditorTabPro
   const [error, setError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  // Reset form state if the memo prop changes (e.g., user selects a different memo)
+  const initializedMemoId = useRef<string | null>(null);
+
+  // Reset form state only when a new memo is selected (memo.id changes)
   useEffect(() => {
-    setTitle(memo.title);
-    setContent(memo.content ?? '');
-    setIsPublic(memo.isPublic);
-    setError(null);
-    setSaveSuccess(false);
-    setIsSaving(false);
-    setIsDeleting(false);
-  }, [memo]);
+    if (memo.id !== initializedMemoId.current) {
+      setTitle(memo.title);
+      setContent(memo.content ?? '');
+      setIsPublic(memo.isPublic);
+      setError(null);
+      setSaveSuccess(false);
+      setIsSaving(false);
+      setIsDeleting(false);
+      initializedMemoId.current = memo.id;
+    }
+    // Note: Subsequent updates to memo (e.g., from polling in parent) will not reset the state
+    // The auto-save hook is responsible for saving the local state.
+  }, [memo.id]); // Depend only on memo.id
 
   const handleSave = useCallback(async () => {
     setIsSaving(true);

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react'; // Import useEffect
 import Header from '@/components/Header';
 import DataErrorDisplay from '@/components/datta_error_display';
 import Explorer from '@/components/Explorer';
@@ -12,10 +13,19 @@ import { use_memo_auto_save } from '@/hooks/use_memo_auto_save';
 export default function Home() {
   const { session, status, authError, handleSignIn, handleSignOut } = use_auth_handlers();
   const { selectedMemoId, handleSelectMemo } = use_memo_selection(); // Use the new hook
-  const { memo: memos, updateMemo } = use_memo(false); // Assuming this is not a public view
-
+  const { memo: memos, updateMemo, fetchmemo } = use_memo('user'); // Fetch user's memos for this view
+ 
   use_memo_auto_save({ selectedMemoId, memos, updateMemo });
-
+ 
+  // Polling mechanism to periodically fetch memos
+  useEffect(() => {
+    const pollingInterval = setInterval(() => {
+      fetchmemo();
+    }, 30000); // Poll every 30 seconds
+ 
+    return () => clearInterval(pollingInterval); // Clean up the interval on component unmount
+  }, [fetchmemo]); // Re-run effect if fetchmemo changes (though it should be stable)
+ 
   return (
     // Main container: Full height, flex column
     <div className="flex flex-col h-screen max-h-screen overflow-hidden bg-gray-100">
@@ -42,6 +52,7 @@ export default function Home() {
               onSelectMemo={handleSelectMemo}
               selectedMemoId={selectedMemoId}
               onCreateNewMemo={(newMemoId) => handleSelectMemo(newMemoId)} // Pass the handler
+              onMemoChange={fetchmemo} // Pass fetchmemo to Explorer
           />
         </div>
 
@@ -53,9 +64,9 @@ export default function Home() {
               onMemoDeleted={() => handleSelectMemo(null)} // Use handleSelectMemo from hook
               onMemoCreated={(newMemoId) => handleSelectMemo(newMemoId)} // Use handleSelectMemo from hook
            />
-        </div>
-
-      </div>
+         </div>
+ 
+       </div>
     </div>
   );
 }
