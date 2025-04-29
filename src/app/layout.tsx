@@ -6,8 +6,8 @@ import AuthProvider from "../components/auth_provider";
 
 
 export const metadata: Metadata = {
-  title: "Memo App",
-  description: "A simple memo application with Google login",
+  title: "lkjsxcnext",
+  description: "lkjsxcnext",
 };
 
 export default function RootLayout({
