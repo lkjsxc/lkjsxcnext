@@ -6,19 +6,22 @@ import { authOptions } from "../../auth/[...nextauth]/route";
 const prisma = new PrismaClient();
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
+  const session = await getServerSession(authOptions);
   const { id } = params;
 
-    const memo = await prisma.memo.findUnique({
-      where: {
-        id: id,
-      },
-    });
+  const memo = await prisma.memo.findUnique({
+    where: {
+      id: id,
+    },
+  });
 
-    if (!memo) {
-      return NextResponse.json({ message: "Memo not found" }, { status: 404 });
-    }
+  if (!memo) {
+    return NextResponse.json({ message: "Memo not found" }, { status: 404 });
+  }
 
-    return NextResponse.json(memo);
+  const isOwner = session?.user?.id === memo.authorId;
+
+  return NextResponse.json({ ...memo, isOwner });
 }
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {

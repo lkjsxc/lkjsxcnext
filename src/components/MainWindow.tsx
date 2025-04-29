@@ -63,9 +63,13 @@ export default function MainWindow({ selectedMemoId, session, onMemoDeleted, onM
 
     loadMemoDetails(); // Initial load
 
-    // Set up polling if a memo is selected
+    // Determine if the current user owns the memo *inside* the effect
+    const isOwner = session?.user?.id === currentMemo?.authorId;
+
+    // Set up polling if a memo is selected AND the user is NOT the owner
+    // This prevents the editor from being updated by server changes while open
     let intervalId: NodeJS.Timeout | undefined;
-    if (selectedMemoId) {
+    if (selectedMemoId && !isOwner) {
       intervalId = setInterval(loadMemoDetails, 10000); // Poll every 10 seconds
     }
 
@@ -102,7 +106,7 @@ export default function MainWindow({ selectedMemoId, session, onMemoDeleted, onM
      return <div className="flex justify-center items-center h-full text-gray-500">Memo not available.</div>;
   }
 
-  // Determine if the current user owns the memo
+  // Determine if the current user owns the memo (This is now only used for rendering)
   const isOwner = session?.user?.id === currentMemo.authorId;
 
   return (

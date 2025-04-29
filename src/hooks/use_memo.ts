@@ -127,7 +127,7 @@ export const use_memo = (viewMode: MemoViewMode = 'user'): UsememoResult => {
         setError("Memo title cannot be empty.");
         return;
      }
-     await handleApiCall(() => updateMemoApi(id, title, content, isPublic), 'updating', (updatedMemo: Memo) => {
+     await handleApiCall(() => updateMemoApi(id, title, content), 'updating', (updatedMemo: Memo) => {
        setmemo(prevmemo => prevmemo.map(memo => (memo.id === updatedMemo.id ? updatedMemo : memo)));
      }, id);
   };
