@@ -1,15 +1,15 @@
 'use client';
 
-import Header from '@/components/Header';
-import DataErrorDisplay from '@/components/DataErrorDisplay';
-import Explorer from '@/components/Explorer';
-import MainWindow from '@/components/MainWindow';
-import { useAuthHandlers } from '@/hooks/useAuthHandlers';
-import { useMemoSelection } from '@/hooks/useMemoSelection'; // Import the new hook
+import Header from '@/components/header';
+import DataErrorDisplay from '@/components/datta_error_display';
+import Explorer from '@/components/explorer';
+import MainWindow from '@/components/mainwindow';
+import { use_auth_handlers } from '@/hooks/use_auth_handler';
+import { use_memo_selection } from '@/hooks/use_memo_selection'; // Import the new hook
 
 export default function Home() {
-  const { session, status, authError, handleSignIn, handleSignOut } = useAuthHandlers();
-  const { selectedMemoId, handleSelectMemo } = useMemoSelection(); // Use the new hook
+  const { session, status, authError, handleSignIn, handleSignOut } = use_auth_handlers();
+  const { selectedMemoId, handleSelectMemo } = use_memo_selection(); // Use the new hook
 
   return (
     // Main container: Full height, flex column

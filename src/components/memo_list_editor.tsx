@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { Memo, LoadingStates } from '@/types/memo'; // Import necessary types
-import MemoItem from './MemoItem'; // Import the MemoItem component
+import MemoItem from './memo_item'; // Import the MemoItem component
 
 // Simple debounce function
 const debounce = <T extends (...args: any[]) => void>(func: T, delay: number) => {
@@ -28,7 +28,7 @@ const debounce = <T extends (...args: any[]) => void>(func: T, delay: number) =>
 };
 
 interface MemoListEditorProps {
-  memos: Memo[];
+  memo: Memo[];
   loading: LoadingStates;
   error: string | null;
   createMemo: (title: string, content: string) => Promise<void>;
@@ -37,7 +37,7 @@ interface MemoListEditorProps {
 }
 
 const MemoListEditor: React.FC<MemoListEditorProps> = ({
-  memos,
+  memo,
   loading,
   error,
   createMemo,
@@ -130,14 +130,14 @@ const MemoListEditor: React.FC<MemoListEditorProps> = ({
       <div className="w-full p-4"> {/* Adjusted width as it's now in a pane */}
         {/* Removed h2 as it's in the parent pane header */}
         {loading.fetching ? (
-          <p>Loading memos...</p>
+          <p>Loading memo...</p>
         ) : error ? (
-           <p className="text-red-500">Error loading memos: {error}</p>
-        ) : memos.length === 0 ? (
-           <p>You haven't created any memos yet.</p>
+           <p className="text-red-500">Error loading memo: {error}</p>
+        ) : memo.length === 0 ? (
+           <p>You haven't created any memo yet.</p>
         ): (
           <ul className="space-y-4">
-            {memos.map((memo) => (
+            {memo.map((memo) => (
               <MemoItem
                 key={memo.id}
                 memo={memo}

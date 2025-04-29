@@ -22,13 +22,13 @@ export async function GET(request: Request) {
       whereClause.isPublic = true;
     }
 
-    const memos = await prisma.memo.findMany({
+    const memo = await prisma.memo.findMany({
       where: whereClause,
       orderBy: {
         createdAt: "desc",
       },
     });
-    return NextResponse.json(memos);
+    return NextResponse.json(memo);
 }
 
 export async function POST(request: Request) {

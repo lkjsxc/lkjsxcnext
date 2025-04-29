@@ -2,8 +2,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Session } from 'next-auth';
 import type { Memo } from '@/types/memo';
-import EditorTab from './EditorTab'; // We'll create this next
-import ViewerTab from './ViewerTab'; // We'll create this next
+import EditorTab from './editor_tab'; // We'll create this next
+import ViewerTab from './viewer_tab'; // We'll create this next
 
 interface MainWindowProps {
   selectedMemoId: string | null;
@@ -14,8 +14,7 @@ interface MainWindowProps {
 
 // --- Mock API Fetch Function (Replace with your actual API calls) ---
 async function fetchMemoById(id: string): Promise<Memo | null> {
-  console.log(`Fetching memo by ID: ${id}`);
-  const response = await fetch(`/api/memos/${id}`);
+  const response = await fetch(`/api/memo/${id}`);
   if (!response.ok) {
     if (response.status === 404) return null; // Not found
     throw new Error(`Failed to fetch memo ${id}`);
@@ -43,7 +42,6 @@ export default function MainWindow({ selectedMemoId, session, onMemoDeleted, onM
       setIsLoading(true);
       setError(null);
       setCurrentMemo(null); // Clear previous memo while loading
-      console.log("MainWindow: Fetching details for", selectedMemoId);
       try {
         const memo = await fetchMemoById(selectedMemoId);
         if (memo) {
@@ -58,7 +56,7 @@ export default function MainWindow({ selectedMemoId, session, onMemoDeleted, onM
           // onMemoDeleted();
         }
       } catch (err) {
-        console.error("Error fetching memo details:", err);
+        setError(err instanceof Error ? err.message : 'Failed to load memo details.');
         setError(err instanceof Error ? err.message : 'Failed to load memo details.');
       } finally {
         setIsLoading(false);

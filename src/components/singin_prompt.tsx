@@ -6,9 +6,9 @@ interface SignInPromptProps {
 
 const SignInPrompt = ({ onSignIn }: SignInPromptProps) => (
   <div className="flex flex-col items-center justify-center h-full text-center p-6">
-    <h2 className="text-xl font-semibold mb-4 text-gray-700">My Memos</h2>
+    <h2 className="text-xl font-semibold mb-4 text-gray-700">My memo</h2>
     <p className="mb-6 text-gray-600">
-      Sign in to create, edit, and manage your personal memos.
+      Sign in to create, edit, and manage your personal memo.
     </p>
     <button
       onClick={onSignIn}
@@ -17,7 +17,7 @@ const SignInPrompt = ({ onSignIn }: SignInPromptProps) => (
       Sign In
     </button>
      <p className="mt-4 text-sm text-gray-500">
-        (You can still browse public memos on the left)
+        (You can still browse public memo on the left)
     </p>
   </div>
 );

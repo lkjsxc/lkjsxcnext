@@ -2,7 +2,7 @@
 
 import React, { useCallback } from 'react';
 import { Session } from 'next-auth';
-import AuthButton from '@/components/AuthButton';
+import AuthButton from '@/components/auth_button';
 
 interface HeaderProps {
   session: Session | null;

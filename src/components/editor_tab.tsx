@@ -13,8 +13,7 @@ interface EditorTabProps {
 
 // --- Mock API Update/Delete Functions (Replace with actual calls) ---
 async function updateMemoApi(id: string, data: Partial<Pick<Memo, 'title' | 'content' | 'isPublic'>>): Promise<Memo> {
-    console.log(`Updating memo ${id} with:`, data);
-    const response = await fetch(`/api/memos/${id}`, {
+    const response = await fetch(`/api/memo/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -24,7 +23,7 @@ async function updateMemoApi(id: string, data: Partial<Pick<Memo, 'title' | 'con
 }
 
 async function deleteMemoApi(id: string): Promise<void> {
-    const response = await fetch(`/api/memos/${id}`, { method: 'DELETE' });
+    const response = await fetch(`/api/memo/${id}`, { method: 'DELETE' });
     if (!response.ok) throw new Error('Failed to delete memo');
 }
 // --- End Mock API ---
@@ -64,7 +63,7 @@ export default function EditorTab({ memo, session, onMemoDeleted }: EditorTabPro
       // the data is considered up-to-date. If you need immediate reflection
       // without full refetch, you might need another callback to update parent.
     } catch (err) {
-      console.error("Error saving memo:", err);
+      setError(err instanceof Error ? err.message : 'Failed to save memo.');
       setError(err instanceof Error ? err.message : 'Failed to save memo.');
     } finally {
       setIsSaving(false);
@@ -81,7 +80,8 @@ export default function EditorTab({ memo, session, onMemoDeleted }: EditorTabPro
       await deleteMemoApi(memo.id);
       onMemoDeleted(); // Notify parent to clear selection/refetch list
     } catch (err) {
-      console.error("Error deleting memo:", err);
+      setError(err instanceof Error ? err.message : 'Failed to delete memo.');
+      setIsDeleting(false); // Only set back if deletion failed
       setError(err instanceof Error ? err.message : 'Failed to delete memo.');
       setIsDeleting(false); // Only set back if deletion failed
     }

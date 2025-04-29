@@ -1,8 +1,8 @@
 // src/components/Explorer.tsx
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Session } from 'next-auth';
 import type { Memo } from '@/types/memo'; // Adjust path as needed
-import { fetchPublicMemos, fetchUserMemos, createMemoApi } from '@/utils/memoApi'; // Import actual API functions
+import { fetchPublicmemo, fetchUsermemo, createMemoApi } from '@/utils/memo_api'; // Import actual API functions
 
 interface ExplorerProps {
   session: Session | null;
@@ -13,118 +13,49 @@ interface ExplorerProps {
 
 
 export default function Explorer({ session, onSelectMemo, selectedMemoId, onCreateNewMemo }: ExplorerProps) {
-  const [memos, setMemos] = useState<Memo[]>([]);
+  const [memo, setmemo] = useState<Memo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadMemos = useCallback(async () => {
+  const loadmemo = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    console.log("Explorer: loadMemos triggered. Session:", !!session);
 
     try {
-      const publicMemosPromise = fetchPublicMemos();
-      const userMemosPromise = session ? fetchUserMemos() : Promise.resolve([]); // Fetch user memos only if logged in
+      const publicmemoPromise = fetchPublicmemo();
+      const usermemoPromise = session ? fetchUsermemo() : Promise.resolve([]); // Fetch user memo only if logged in
 
-      const [publicMemos, userMemos] = await Promise.all([
-          publicMemosPromise,
-          userMemosPromise
+      const [publicmemo, usermemo] = await Promise.all([
+          publicmemoPromise,
+          usermemoPromise
       ]);
 
-      // Combine and deduplicate memos
+      // Combine and deduplicate memo
       // Prioritize user's version if they have edited a public memo
-      const combinedMemos: Record<string, Memo> = {};
-      publicMemos.forEach(memo => combinedMemos[memo.id] = memo);
-      userMemos.forEach(memo => combinedMemos[memo.id] = memo); // User's memos overwrite public ones with same ID
+      const combinedmemo: Record<string, Memo> = {};
+      publicmemo.forEach(memo => combinedmemo[memo.id] = memo);
+      usermemo.forEach(memo => combinedmemo[memo.id] = memo); // User's memo overwrite public ones with same ID
 
       // Sort by date (newest first) - adjust if needed
-      const sortedMemos = Object.values(combinedMemos).sort(
+      const sortedmemo = Object.values(combinedmemo).sort(
           (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
 
-      setMemos(sortedMemos);
+      setmemo(sortedmemo);
 
     } catch (err) {
-      console.error("Error loading memos:", err);
-      setError(err instanceof Error ? err.message : 'Failed to load memos.');
+      console.error("Error loading memo:", err);
+      setError(err instanceof Error ? err.message : 'Failed to load memo.');
     } finally {
       setIsLoading(false);
     }
   }, [session]); // Reload when session changes
 
-// Effect to load memos when session changes or component mounts
+// Effect to load memo when session changes or component mounts
   useEffect(() => {
-    loadMemos();
-  }, [loadMemos]); // Dependency array includes the memoized function
+    loadmemo();
+  }, [loadmemo]); // Dependency array includes the memoized function
    // Dependency array includes the memoized function
-// Effect to manage WebSocket connection
-  const wsRef = useRef<WebSocket | null>(null);
-
-  useEffect(() => {
-    let ws: WebSocket | null = null; // Use a local variable for the current effect run
-
-    // Only attempt to connect if session user ID exists
-    if (session?.user?.id) {
-      console.log('Explorer: WebSocket effect running, session user ID exists.');
-
-      // Subscribe to memo messages
-      const handleMemoMessage = (message: any) => {
-        // Handle incoming websocket messages
-        console.log('WebSocket message received in Explorer:', message);
-        if (message && message.type && message.payload) {
-          setMemos(currentMemos => {
-            const updatedMemos = [...currentMemos];
-            const memoIndex = updatedMemos.findIndex(m => m.id === message.payload.id);
-
-            switch (message.type) {
-              case 'memo_created':
-                if (memoIndex === -1) {
-                  updatedMemos.unshift(message.payload);
-                }
-                break;
-              case 'memo_updated':
-                if (memoIndex !== -1) {
-                  updatedMemos[memoIndex] = message.payload;
-                } else {
-                   updatedMemos.unshift(message.payload);
-                }
-                break;
-              case 'memo_deleted':
-                if (memoIndex !== -1) {
-                  updatedMemos.splice(memoIndex, 1);
-                }
-                break;
-              default:
-                console.warn('Unknown websocket message type:', message.type);
-            }
-             updatedMemos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-            return updatedMemos;
-          });
-        }
-      };
-
-      // Note: We don't store the WebSocket instance directly in wsRef here
-      // because websocketManager manages the single connection.
-      // We just need to ensure we unsubscribe on cleanup.
-
-    } else {
-      console.log('Explorer: WebSocket effect skipped, no session user ID.');
-      // If session becomes null, ensure any existing subscriptions are removed
-      // The websocketManager handles the connection lifecycle based on subscriptions.
-    }
-
-    // Cleanup function
-    return () => {
-      console.log('Explorer: WebSocket effect cleanup running.');
-      // Unsubscribe the specific handler for this component
-      const handleMemoMessage = (message: any) => {
-        // This is a placeholder to get the function reference for unsubscribe
-        // The actual logic is in the effect's scope
-      };
-      console.log('Explorer: Unsubscribed from memo messages.');
-    };
-
-  }, [session?.user?.id]); // Dependency on session user ID
 
   const handleCreateNewMemo = useCallback(async () => {
     if (!session) {
@@ -136,14 +67,14 @@ export default function Explorer({ session, onSelectMemo, selectedMemoId, onCrea
     try {
       const newMemo = await createMemoApi('', ''); // Create with empty title and content
       onCreateNewMemo(newMemo.id); // Call the prop to select the new memo
-      loadMemos(); // Reload the list to show the new memo
+      loadmemo(); // Reload the list to show the new memo
     } catch (err) {
       console.error("Error creating new memo:", err);
       setError(err instanceof Error ? err.message : 'Failed to create new memo.');
     } finally {
       setIsLoading(false);
     }
-  }, [session, onCreateNewMemo, loadMemos]); // Dependencies
+  }, [session, onCreateNewMemo, loadmemo]); // Dependencies
 
 
   // --- Render Logic ---
@@ -164,16 +95,16 @@ export default function Explorer({ session, onSelectMemo, selectedMemoId, onCrea
       {/* <input type="text" placeholder="Filter by title..." className="mb-4 p-2 border rounded w-full" /> */}
 
 
-      {isLoading && <p className="text-gray-500">Loading memos...</p>}
+      {isLoading && <p className="text-gray-500">Loading memo...</p>}
       {error && <p className="text-red-500">Error: {error}</p>}
 
-      {!isLoading && !error && memos.length === 0 && (
-        <p className="text-gray-500">No memos found.</p>
+      {!isLoading && !error && memo.length === 0 && (
+        <p className="text-gray-500">No memo found.</p>
       )}
 
-      {!isLoading && !error && memos.length > 0 && (
+      {!isLoading && !error && memo.length > 0 && (
         <ul className="space-y-1 overflow-y-auto flex-1"> {/* flex-1 and overflow-y-auto for scrolling */}
-          {memos.map((memo) => (
+          {memo.map((memo) => (
             <li key={memo.id}>
               <button
                 onClick={() => onSelectMemo(memo.id)}
@@ -185,7 +116,7 @@ export default function Explorer({ session, onSelectMemo, selectedMemoId, onCrea
                 <span className="block truncate"> {/* truncate long titles */}
                    {memo.title || '(Untitled)'}
                 </span>
-                {/* Optional: Add a small indicator for user's own memos */}
+                {/* Optional: Add a small indicator for user's own memo */}
                 {session && memo.authorId === session.user.id && (
                    <span className="text-xs text-blue-600 ml-1">(Mine)</span>
                 )}

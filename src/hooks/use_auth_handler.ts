@@ -10,7 +10,7 @@ interface UseAuthHandlersResult {
   setAuthError: (error: string | null) => void; // Expose setter for external errors if needed
 }
 
-export const useAuthHandlers = (): UseAuthHandlersResult => {
+export const use_auth_handlers = (): UseAuthHandlersResult => {
   const { data: session, status } = useSession();
   const [authError, setAuthError] = useState<string | null>(null);
 

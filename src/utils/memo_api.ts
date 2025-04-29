@@ -1,6 +1,6 @@
 import { Memo } from '../types/memo'; // Assuming types will be moved
 
-const API_BASE_URL = '/api/memos';
+const API_BASE_URL = '/api/memo';
 
 interface ApiError extends Error {
   status?: number;
@@ -41,13 +41,13 @@ export const fetchMemoById = async (id: string): Promise<Memo | null> => {
   return handleApiResponse<Memo>(res);
 };
 
-export const fetchPublicMemos = async (): Promise<Memo[]> => {
+export const fetchPublicmemo = async (): Promise<Memo[]> => {
   const res = await fetch(API_BASE_URL);
   return handleApiResponse<Memo[]>(res);
 };
 
-export const fetchUserMemos = async (): Promise<Memo[]> => {
-  // Assuming the API endpoint handles fetching user-specific memos based on the authenticated session
+export const fetchUsermemo = async (): Promise<Memo[]> => {
+  // Assuming the API endpoint handles fetching user-specific memo based on the authenticated session
   const res = await fetch(`${API_BASE_URL}?scope=private`);
   return handleApiResponse<Memo[]>(res);
 };

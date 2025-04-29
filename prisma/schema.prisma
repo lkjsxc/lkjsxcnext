@@ -33,7 +33,7 @@ model User {
   // Relation to Session model (for user sessions)
   sessions Session[]
   // Relation to your custom Memo model
-  memos    Memo[]
+  memo    Memo[]
 }
 
 // Account model: Links OAuth accounts (e.g., Google) to a User.
@@ -94,7 +94,7 @@ model Memo {
 
   // --- Relation back to User ---
   // Defines the relationship between Memo and User (author)
-  // onDelete: Cascade means if the User is deleted, their Memos are also deleted.
+  // onDelete: Cascade means if the User is deleted, their memo are also deleted.
   // Change to Restrict or SetNull if you want different behavior.
   author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
 }

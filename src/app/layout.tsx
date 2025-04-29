@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
-import AuthProvider from "../components/AuthProvider";
+import AuthProvider from "../components/auth_provider";
 
 
 export const metadata: Metadata = {
