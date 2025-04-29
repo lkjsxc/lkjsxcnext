@@ -41,11 +41,10 @@ This is a simple web application for creating, viewing, and managing memos. It s
     - content text
 
 ## Known issues
-- When signed, Once you select a note, you cannot select another note.
+- When signed, Once I select a memo, I cannot select another memo.
 - Polling rate is too low. 5 seconds is ideal.
-- There is no button to add a note in Explorer
-- There is no button to toggle private/public in Editor
-- The ratio of Explorer to MainWindow cannot be changed.
+- There is no button to add a memo in Explorer.
+- There is no button to toggle private/public in Editor. A green and gray toggle is preferable.
 
 ## Technical Stack
 
