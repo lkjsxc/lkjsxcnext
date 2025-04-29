@@ -84,17 +84,18 @@ model VerificationToken {
 
 // Memo model: Represents the notes created by users.
 model Memo {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())      // Timestamp when the memo was created
-  updatedAt DateTime @updatedAt          // Timestamp when the memo was last updated
-  title     String                       // Title of the memo
-  content   String?                      // Content of the memo (optional)
-  isPublic  Boolean @default(false)      // Indicates if the memo is public or private
-  authorId  String                       // Foreign key linking to the User model (author)
+  id            String    @id @default(cuid())
+  createdAt     DateTime  @default(now())      // Timestamp when the memo was created
+  updatedAt     DateTime  @updatedAt          // Timestamp when the memo was last updated (server-side)
+  clientUpdatedAt DateTime? // Timestamp from the client when the update was initiated
+  title         String                       // Title of the memo
+  content       String?                      // Content of the memo (optional)
+  isPublic      Boolean   @default(false)      // Indicates if the memo is public or private
+  authorId      String                       // Foreign key linking to the User model (author)
 
   // --- Relation back to User ---
   // Defines the relationship between Memo and User (author)
   // onDelete: Cascade means if the User is deleted, their memo are also deleted.
   // Change to Restrict or SetNull if you want different behavior.
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author        User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
 }

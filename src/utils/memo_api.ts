@@ -61,11 +61,11 @@ export const createMemoApi = async (title: string, content: string): Promise<Mem
   return handleApiResponse<Memo>(res);
 };
 
-export const updateMemoApi = async (id: string, title: string, content: string, isPublic?: boolean): Promise<Memo> => {
+export const updateMemoApi = async (id: string, title: string, content: string, isPublic?: boolean, clientUpdatedAt?: number): Promise<Memo> => {
   const res = await fetch(`${API_BASE_URL}/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, content, isPublic }),
+    body: JSON.stringify({ title, content, isPublic, clientUpdatedAt }),
   });
   return handleApiResponse<Memo>(res);
 };
