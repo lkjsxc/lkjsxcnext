@@ -1,111 +1,182 @@
-// src/components/MainWindow.tsx
-import { useState, useEffect, useCallback } from 'react';
-import type { Session } from 'next-auth';
-import type { Memo } from '@/types/memo';
-import EditorTab from './editor_tab'; // We'll create this next
-import ViewerTab from './viewer_tab'; // We'll create this next
-import { useSyncManager } from '@/hooks/use_sync_manager'; // Import the new hook
+'use client';
+
+import React, { useEffect, useState, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
+import { Memo } from '@/types/memo'; // Assuming Memo type is defined
+import useMemoUpdateQueue from '@/hooks/useMemoUpdateQueue';
+import useAutoSave from '@/hooks/useAutoSave';
+import useCreateMemo from '@/hooks/useCreateMemo';
+import useDeleteMemo from '@/hooks/useDeleteMemo';
 
 interface MainWindowProps {
   selectedMemoId: string | null;
-  session: Session | null;
-  onMemoDeleted: () => void; // Callback to clear selection in parent
-  onMemoCreated: (newMemoId: string) => void; // Callback to select new memo (for later use)
+  onMemoCreated: (memoId: string) => void;
+  onMemoDeleted: () => void;
 }
 
-// --- Mock API Fetch Function (Replace with your actual API calls) ---
-// --- Mock API Fetch Function (Replace with your actual API calls) ---
-// async function fetchMemoById(id: string): Promise<Memo | null> {
-//   const response = await fetch(`/api/memo/${id}`);
-//   if (!response.ok) {
-//     if (response.status === 404) return null; // Not found
-//     throw new Error(`Failed to fetch memo ${id}`);
-//   }
-//   return response.json();
-// }
-// --- End Mock API ---
+const MainWindow: React.FC<MainWindowProps> = ({ selectedMemoId, onMemoCreated, onMemoDeleted }) => {
+  const { data: session } = useSession();
+  const [memo, setMemo] = useState<Memo | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
 
-export default function MainWindow({ selectedMemoId, session, onMemoDeleted, onMemoCreated }: MainWindowProps) {
-  const [currentMemo, setCurrentMemo] = useState<Memo | null>(null);
-  const [isLoading, setIsLoading] = useState(false); // Keep loading state for initial load/selection change
-  const [error, setError] = useState<string | null>(null); // Keep error state
+  const { addUpdate, isProcessing, error: updateError } = useMemoUpdateQueue();
+  const { createMemo, loading: createLoading, error: createError } = useCreateMemo();
+  const { deleteMemo, loading: deleteLoading, error: deleteError } = useDeleteMemo();
 
-  // Use the new sync manager
-  const { addMemoUpdateToQueue, syncState } = useSyncManager();
 
-  // Determine if the current user owns the currently loaded memo
-  const isOwner = session?.user?.id === currentMemo?.authorId;
+  // Use useCallback to memoize the update handler for useAutoSave dependency
+  const handleAddUpdate = useCallback((update: Omit<Memo, 'clientUpdatedAt'>) => {
+    addUpdate(update);
+  }, [addUpdate]);
 
-  // Effect for initial memo load when selectedMemoId changes or component mounts
-  // This will now rely on the data fetched by useSyncManager
+  useAutoSave({
+    memo,
+    addUpdate: handleAddUpdate,
+    isEditing: isOwner && !!memo, // Only auto-save if owner and memo exists
+  });
 
-  // Effect to update currentMemo when syncState.memos changes and selectedMemoId is set
   useEffect(() => {
-    if (selectedMemoId && syncState.memos) {
-      const memo = syncState.memos.find(m => m.id === selectedMemoId);
-      if (memo) {
-        setCurrentMemo(memo);
-      } else {
-        // Memo not found in synced data, it might have been deleted on another client
-        setCurrentMemo(null);
-        onMemoDeleted(); // Clear selection
+    const fetchMemo = async () => {
+      // Do not fetch if no memo is selected or if the user is the owner (editing)
+      if (!selectedMemoId || isOwner) {
+        // If no memo selected, clear the current memo state
+        if (!selectedMemoId) {
+           setMemo(null);
+           setIsOwner(false);
+        }
+        return;
       }
-    } else if (!selectedMemoId) {
-       setCurrentMemo(null);
+
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/memo/${selectedMemoId}`);
+        if (!res.ok) {
+          throw new Error(`Error fetching memo: ${res.statusText}`);
+        }
+        const data: Memo & { isOwner: boolean } = await res.json();
+        setMemo(data);
+        setIsOwner(data.isOwner);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMemo();
+  }, [selectedMemoId, session]); // Refetch when selectedMemoId or session changes
+
+  const handleCreateNewMemo = async () => {
+    // TODO: Decide on initial data for new memo (e.g., title, content, public/private)
+    const newMemo = await createMemo({ title: 'New Memo', content: '', isPublic: session ? false : true });
+    if (newMemo) {
+      console.log('New memo created:', newMemo.id);
+      onMemoCreated(newMemo.id); // Call the handler from page.tsx
     }
-  }, [selectedMemoId, syncState.memos, onMemoDeleted]);
+  };
 
+  const handleDeleteMemo = async () => {
+    if (selectedMemoId && confirm('Are you sure you want to delete this memo?')) {
+      const success = await deleteMemo(selectedMemoId);
+      if (success) {
+        console.log('Memo deleted:', selectedMemoId);
+        onMemoDeleted(); // Call the handler from page.tsx
+      }
+    }
+  };
 
-  // --- Render Logic ---
-
-  if (isLoading) {
-    return <div className="flex justify-center items-center h-full"><p>Loading memo...</p></div>;
-  }
-
-  if (error) {
-    return <div className="p-4 text-red-600 bg-red-100 border border-red-400 rounded">Error: {error}</div>;
-  }
 
   if (!selectedMemoId) {
     return (
-      <div className="flex justify-center items-center h-full text-gray-500">
-        <p>Select a memo from the list on the left, or create a new one.</p>
-        {/* Placeholder for future 'Create New' action if initiated from here */}
+      <div className="flex flex-col items-center justify-center h-full text-gray-500">
+        <p className="mb-4">Select a memo from the explorer or create a new one.</p>
+        <button
+          onClick={handleCreateNewMemo}
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          Create New Memo
+        </button>
       </div>
     );
   }
 
-  if (!currentMemo) {
-     // Should ideally be covered by loading/error states, but as a fallback
-     return <div className="flex justify-center items-center h-full text-gray-500">Memo not available.</div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        Loading memo...
+      </div>
+    );
   }
 
-  // Determine if the current user owns the memo (This is now only used for rendering)
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-full text-red-500">
+        Error loading memo: {error}
+      </div>
+    );
+  }
+
+  if (!memo) {
+    return (
+       <div className="flex items-center justify-center h-full text-gray-500">
+        Memo not found.
+      </div>
+    );
+  }
 
   return (
-    <div className="h-full">
-      {isOwner ? (
-        <EditorTab
-            key={currentMemo.id} // Add key to force re-mount/state reset when memo changes
-            memo={currentMemo}
-            session={session}
-            onMemoDeleted={onMemoDeleted}
-            onMemoChange={(updatedMemo) => {
-              // Add the updated memo to the sync queue
-              addMemoUpdateToQueue({
-                id: updatedMemo.id,
-                title: updatedMemo.title,
-                content: updatedMemo.content,
-                isPublic: updatedMemo.isPublic,
-              });
-              // Optionally update local state immediately for responsiveness
-              setCurrentMemo(updatedMemo);
-            }}
-            // Pass onMemoCreated if Editor handles creation flow later
-        />
-      ) : (
-        <ViewerTab memo={currentMemo} />
-      )}
+    <div className="h-full flex flex-col">
+      {/* Memo Title */}
+      <h1 className="text-2xl font-bold mb-4">{memo.title || 'Untitled Memo'}</h1>
+
+      {/* Memo Content */}
+      <div className="flex-1 overflow-y-auto">
+        {isOwner ? (
+          // Editor Mode (Placeholder)
+          <div className="flex flex-col h-full">
+            <div className="flex justify-between items-center mb-4">
+               <p className="text-gray-600">Editing as owner...</p>
+               <button
+                 onClick={handleDeleteMemo}
+                 className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+               >
+                 Delete Memo
+               </button>
+            </div>
+
+            {/* Memo Title Input */}
+            <input
+              type="text"
+              className="w-full text-2xl font-bold mb-4 p-2 border rounded"
+              value={memo.title}
+              onChange={(e) => setMemo({ ...memo, title: e.target.value })}
+              placeholder="Untitled Memo"
+            />
+
+            {/* Memo Content Textarea */}
+            <textarea
+              className="flex-1 w-full p-2 border rounded resize-none"
+              value={memo.content}
+              onChange={(e) => setMemo({ ...memo, content: e.target.value })}
+              placeholder="Edit your memo here..."
+            />
+
+            {/* Save Status/Error Display */}
+            {isProcessing && <p className="text-sm text-gray-500 mt-2">Saving...</p>}
+            {updateError && <p className="text-sm text-red-500 mt-2">Save Error: {updateError}</p>}
+          </div>
+        ) : (
+          // Viewer Mode
+          <div className="prose max-w-none">
+            <p>{memo.content}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
-}
+};
+
+export default MainWindow;

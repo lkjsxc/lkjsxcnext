@@ -1,49 +1,86 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { updateMemoApi } from '../utils/memo_api'; // Assuming this is the correct import path
+import { useState, useEffect, useRef } from 'react';
+import { Memo } from '@/types/memo';
 
-interface QueuedMemoUpdate {
+interface MemoUpdate {
   id: string;
   title: string;
   content: string;
-  isPublic?: boolean;
-  timestamp: number;
+  clientUpdatedAt: string; // ISO string timestamp
 }
 
-export const useMemoUpdateQueue = () => {
-  const [queue, setQueue] = useState<QueuedMemoUpdate[]>([]);
+export interface UseMemoUpdateQueue {
+  addUpdate: (update: Omit<MemoUpdate, 'clientUpdatedAt'>) => void;
+  isProcessing: boolean;
+  error: string | null;
+}
+
+const useMemoUpdateQueue = (): UseMemoUpdateQueue => {
+  const [queue, setQueue] = useState<MemoUpdate[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const processingRef = useRef(false); // Use ref to track processing state in effect
 
-  const addUpdate = (update: Omit<QueuedMemoUpdate, 'timestamp'>) => {
-    setQueue(prevQueue => [...prevQueue, { ...update, timestamp: Date.now() }]);
-  };
+  // Effect to process the queue
+  useEffect(() => {
+    const processQueue = async () => {
+      if (queue.length === 0 || processingRef.current) {
+        return;
+      }
 
-  const processQueueManually = useCallback(async () => {
-    if (queue.length > 0 && !isProcessing) {
+      processingRef.current = true;
       setIsProcessing(true);
-      const nextUpdate = queue[0];
-      try {
-        // Call the API to update the memo
-        // The server will need to handle the timestamp and potential conflicts
-        await updateMemoApi(nextUpdate.id, nextUpdate.title, nextUpdate.content, nextUpdate.isPublic);
+      setError(null);
 
-        // Remove the processed item from the queue
-        setQueue(prevQueue => prevQueue.slice(1));
-      } catch (error) {
-        console.error('Error processing memo update queue:', error);
-        // Depending on the error handling strategy, you might retry,
-        // move the item to a failed queue, or remove it.
-        // For now, let's just log and remove to prevent blocking the queue.
-         setQueue(prevQueue => prevQueue.slice(1));
+      const nextUpdate = queue[0];
+
+      try {
+        const res = await fetch(`/api/memo/${nextUpdate.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            title: nextUpdate.title,
+            content: nextUpdate.content,
+            clientUpdatedAt: nextUpdate.clientUpdatedAt,
+          }),
+        });
+
+        if (res.status === 409) {
+          // Conflict detected - server has a newer version
+          setError('Conflict: Server has a newer version. Please refresh.');
+          // Depending on desired behavior, you might stop processing or handle differently
+          setQueue([]); // Clear queue on conflict for simplicity
+        } else if (!res.ok) {
+          throw new Error(`Error updating memo: ${res.statusText}`);
+        } else {
+          // Success - remove the processed update from the queue
+          setQueue(prevQueue => prevQueue.slice(1));
+        }
+      } catch (err: any) {
+        setError(err.message);
+        // Decide whether to retry or clear queue on other errors
+        setQueue([]); // Clear queue on other errors for simplicity
       } finally {
+        processingRef.current = false;
         setIsProcessing(false);
       }
-    }
-  }, [queue, isProcessing]); // Depend on queue and isProcessing
+    };
 
-  // Remove the internal useEffect that processes the queue automatically
-  // useEffect(() => {
-  //   processQueue();
-  // }, [queue, isProcessing]);
+    processQueue();
 
-  return { addUpdate, queue, isProcessing, processQueueManually, queueSize: queue.length };
+    // Clean up effect if component unmounts while processing
+    return () => {
+      processingRef.current = false;
+    };
+  }, [queue]); // Depend on queue changes
+
+  const addUpdate = (update: Omit<MemoUpdate, 'clientUpdatedAt'>) => {
+    const clientUpdatedAt = new Date().toISOString();
+    setQueue(prevQueue => [...prevQueue, { ...update, clientUpdatedAt }]);
+  };
+
+  return { addUpdate, isProcessing, error };
 };
+
+export default useMemoUpdateQueue;

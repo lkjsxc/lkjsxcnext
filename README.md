@@ -24,6 +24,29 @@ This is a simple web application for creating, viewing, and managing memos. It s
   - When editing your own memo, polling for that specific memo's details is disabled to prevent server changes from overwriting your current edits in the editor.
 - **Responsive Design:** (Inferred from Tailwind usage and component structure, but not explicitly detailed in code snippets read).
 
+## Layout
+- **Header** 
+  - left: lkjsxcnext(this project name)
+  - right: google signin button (or display account name and signout button)
+- **Explorer**
+  - Show public all user memo and my private memo
+  **MainWindow** 
+  - editor mode: when (I) changed, add send queue (polling).
+    - title text box
+    - content text box
+    - public / private toggle.
+    - delete button
+  - viewer mode: when (other user) changed, add recv queue (polling).
+    - title text 
+    - content text
+
+## Known issues
+- When signed, Once you select a note, you cannot select another note.
+- Polling rate is too low. 5 seconds is ideal.
+- There is no button to add a note in Explorer
+- There is no button to toggle private/public in Editor
+- The ratio of Explorer to MainWindow cannot be changed.
+
 ## Technical Stack
 
 - **Framework:** Next.js (App Router)

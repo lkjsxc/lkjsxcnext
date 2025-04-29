@@ -1,21 +1,27 @@
 'use client';
 
+import React, { useState } from 'react';
 import Header from '@/components/Header';
-import DataErrorDisplay from '@/components/datta_error_display';
 import Explorer from '@/components/Explorer';
 import MainWindow from '@/components/MainWindow';
 import { use_auth_handlers } from '@/hooks/use_auth_handler';
-import { use_memo_selection } from '@/hooks/use_memo_selection'; // Import the new hook
-import { use_memo } from '@/hooks/use_memo';
-import { use_memo_auto_save } from '@/hooks/use_memo_auto_save';
 
 export default function Home() {
   const { session, status, authError, handleSignIn, handleSignOut } = use_auth_handlers();
-  const { selectedMemoId, handleSelectMemo } = use_memo_selection(); // Use the new hook
-  const { memo: memos, updateMemo } = use_memo('user'); // Fetch user's memos for this view
- 
-  use_memo_auto_save({ selectedMemoId, memos, updateMemo });
- 
+  const [selectedMemoId, setSelectedMemoId] = useState<string | null>(null);
+
+  const handleSelectMemo = (memoId: string | null) => {
+    setSelectedMemoId(memoId);
+  };
+
+  const handleMemoCreated = (memoId: string) => {
+    setSelectedMemoId(memoId);
+  };
+
+  const handleMemoDeleted = () => {
+    setSelectedMemoId(null);
+  };
+
   return (
     // Main container: Full height, flex column
     <div className="flex flex-col h-screen max-h-screen overflow-hidden bg-gray-100">
@@ -30,29 +36,23 @@ export default function Home() {
       />
 
       {/* Optional: Display auth errors prominently */}
-      {(authError) && <DataErrorDisplay authError={authError} />}
+      {/* Optional: Display auth errors prominently */}
+      {/* {(authError) && <DataErrorDisplay authError={authError} />} */}
 
       {/* Main Content Area: Flex row, takes remaining height */}
       <div className="flex flex-1 overflow-hidden"> {/* flex-1 allows this div to grow */}
 
         {/* Explorer Pane (Left) */}
         <div className="w-1/3 lg:w-1/4 border-r border-gray-300 overflow-y-auto p-4 bg-white shadow-sm">
-          <Explorer
-              session={session}
-              onSelectMemo={handleSelectMemo}
-              selectedMemoId={selectedMemoId}
-              onCreateNewMemo={(newMemoId) => handleSelectMemo(newMemoId)} // Pass the handler
-              onMemoChange={() => {}} // Removed fetchmemo, provide a no-op or handle change differently if needed
-          />
+          <Explorer onSelectMemo={handleSelectMemo} />
         </div>
 
         {/* MainWindow Pane (Right) */}
         <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
            <MainWindow
-              selectedMemoId={selectedMemoId}
-              session={session}
-              onMemoDeleted={() => handleSelectMemo(null)} // Use handleSelectMemo from hook
-              onMemoCreated={(newMemoId) => handleSelectMemo(newMemoId)} // Use handleSelectMemo from hook
+             selectedMemoId={selectedMemoId}
+             onMemoCreated={handleMemoCreated}
+             onMemoDeleted={handleMemoDeleted}
            />
          </div>
  
