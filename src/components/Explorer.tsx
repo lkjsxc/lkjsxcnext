@@ -53,10 +53,11 @@ export default function Explorer({ session, onSelectMemo, selectedMemoId, onCrea
 
 // Effect to load memo when session changes or component mounts
   useEffect(() => {
-    loadmemo();
+    loadmemo(); // Initial load
+    const intervalId = setInterval(loadmemo, 5000); // Poll every 5 seconds
+    return () => clearInterval(intervalId); // Cleanup interval on unmount or dependency change
   }, [loadmemo]); // Dependency array includes the memoized function
-   // Dependency array includes the memoized function
-
+ 
   const handleCreateNewMemo = useCallback(async () => {
     if (!session) {
       alert('You must be logged in to create a new memo.');
