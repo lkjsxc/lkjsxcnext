@@ -187,7 +187,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql" // Or your chosen DB provider
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -282,7 +282,7 @@ model VerificationToken {
 -   Node.js (v18.x or later recommended for Next.js 13+)
 -   npm, yarn, or pnpm
 -   Git
--   A PostgreSQL database instance (or modify `prisma/schema.prisma` and `.env` for a different database like SQLite)
+-   A SQLite database instance
 -   Google Cloud Platform project with OAuth 2.0 Credentials (Client ID and Client Secret)
 
 ### Installation
@@ -313,9 +313,7 @@ model VerificationToken {
 
     ```dotenv
     # Database connection string (Prisma)
-    # Example for PostgreSQL: postgresql://USER:PASSWORD@HOST:PORT/DATABASE?schema=public
-    # Example for SQLite: file:./dev.db (place it in the prisma folder or adjust path)
-    DATABASE_URL="postgresql://..."
+    DATABASE_URL="file:./dev.db"
 
     # NextAuth Configuration
     # Generate a strong secret: `openssl rand -base64 32` on Linux/macOS
