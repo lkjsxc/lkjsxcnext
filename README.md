@@ -25,6 +25,7 @@ This is a simple web application for creating, viewing, and managing memos. It s
  - The list of memos is periodically polled to show new or updated memos.
  - When viewing a memo that you do *not* own, the memo details are periodically polled to show updates made by the owner.
  - When editing your own memo, polling for that specific memo's details is disabled to prevent server changes from overwriting your current edits in the editor.
+ - Updates made by clients, such as notes, are managed with flags.
 - **Responsive Design:** (Inferred from Tailwind usage and component structure, but not explicitly detailed in code snippets read).
 
 ## Structure
