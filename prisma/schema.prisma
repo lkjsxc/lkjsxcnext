@@ -1,5 +1,3 @@
-
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -12,11 +10,11 @@ datasource db {
 model Memo {
   id              String   @id @default(cuid())
   title           String
-  content         String? 
+  content         String?
   isPublic        Boolean  @default(false)
   createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt 
-  clientUpdatedAt DateTime @default(now()) 
+  updatedAt       DateTime @updatedAt // Managed by Prisma/DB
+  clientUpdatedAt DateTime @default(now()) // Timestamp from client for conflict resolution
 
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
   authorId String
@@ -62,7 +60,7 @@ model User {
   image         String?
   accounts      Account[]
   sessions      Session[]
-  memos         Memo[] 
+  memos         Memo[] // Relation to memos created by the user
 }
 
 model VerificationToken {
