@@ -10,6 +10,7 @@ A simple yet powerful web application for creating, viewing, and managing memos,
 -   [Features](#features)
 -   [Technical Stack](#technical-stack)
 -   [Core Concepts](#core-concepts)
+-   [Code Quality & Philosophy](#code-quality--philosophy)
 -   [Project Structure](#project-structure)
 -   [API Endpoints](#api-endpoints)
 -   [Data Model](#data-model)
@@ -45,7 +46,7 @@ A simple yet powerful web application for creating, viewing, and managing memos,
 -   **Framework:** Next.js 13+ (App Router)
 -   **Authentication:** NextAuth.js
 -   **Database ORM:** Prisma
--   **Database:** SQLite
+-   **Database:** SQLite (Note: Getting Started assumes PostgreSQL, update if using SQLite)
 -   **Styling:** Tailwind CSS
 -   **UI:** React
 -   **Language:** TypeScript
@@ -56,6 +57,39 @@ A simple yet powerful web application for creating, viewing, and managing memos,
 -   **Auto-Save Queue (`useAutoSave`, `useMemoUpdateQueue`):** To handle potentially rapid edits, the `useAutoSave` hook doesn't send an API request directly on every change. Instead, it debounces edits and adds update requests to a queue managed by `useMemoUpdateQueue`. This queue processes one update at a time, ensuring sequential consistency and preventing race conditions from the client-side.
 -   **Optimistic Concurrency Control (OCC):** The `PUT /api/memo/[id]` endpoint implements a basic form of OCC. The client sends its last known update timestamp (`clientUpdatedAt`) along with the new content. The server compares this timestamp with the one stored in the database. If the client's timestamp is older, it means someone else updated the memo since the client last fetched it, so the server rejects the update (HTTP 409 Conflict) to prevent data loss.
 
+## Code Quality & Philosophy
+
+# --- START OF ADDED SECTION ---
+
+This project strives for maintainable, performant, and type-safe code by adhering to the following principles when working with Next.js (App Router) and TypeScript:
+
+-   **Prioritize React Server Components (RSC):** Default to RSCs for improved performance (smaller client bundles, closer data fetching). Use Client Components (`"use client"`) only where necessary for interactivity (hooks like `useState`, `useEffect`, event handlers). Understand the limitations of RSCs (no browser APIs, props must be serializable).
+-   **Strategic Data Fetching:**
+    -   **RSC:** Fetch data directly within components using `async/await`. Leverage Next.js's extended `fetch` options for caching and revalidation.
+    -   **Client Components:** For client-side fetching, caching, and mutations, prefer libraries like SWR or TanStack Query (React Query) over manual `useEffect` fetching for better state management, caching, and developer experience.
+    -   **Mutations:** Use Server Actions for form submissions and server mutations where possible, reducing the need for manual API route handling.
+-   **Effective State Management:**
+    -   Start with local state (`useState`, `useReducer`).
+    -   Use React Context for slowly changing global UI state, avoiding excessive prop drilling.
+    -   Consider lightweight state libraries (e.g., Zustand, Jotai) for complex client-side state if Context becomes unwieldy.
+    -   Distinguish between client state and server cache state (managed by SWR/TanStack Query).
+-   **TypeScript Rigor:**
+    -   Enforce strong typing throughout the application. Avoid `any`.
+    -   Define clear `interface` or `type` definitions for props, API responses, and data structures.
+    -   Utilize TypeScript's utility types and generics for reusable, type-safe code.
+    -   Enable `strict` mode in `tsconfig.json`.
+-   **Functional Programming Influences:**
+    -   Favor immutability for state updates.
+    -   Write pure functions where possible.
+    -   Minimize side effects. Manage necessary side effects explicitly, often within custom hooks or event handlers, limiting the reliance on `useEffect` for complex logic flows.
+-   **Component Design:**
+    -   Break down components into smaller, reusable units with clear responsibilities.
+    -   Extract complex logic and stateful behavior into custom hooks (`use...`).
+    -   Favor component composition.
+-   **Leverage Next.js Conventions:** Utilize App Router file conventions (`layout.tsx`, `page.tsx`, `loading.tsx`, `error.tsx`), Route Handlers, and built-in optimizations like `next/image` and `next/dynamic`.
+
+# --- END OF ADDED SECTION ---
+
 ## Project Structure
 
 ```
@@ -65,7 +99,7 @@ A simple yet powerful web application for creating, viewing, and managing memos,
 ├── public/                  # Static assets (images, fonts, etc.)
 ├── src/
 │   ├── app/                 # Next.js App Router (Pages & API Routes)
-│   │   ├── api/             # Serverless API endpoints
+│   │   ├── api/             # Serverless API endpoints (Route Handlers)
 │   │   │   ├── auth/[...nextauth]/route.ts # NextAuth catch-all route
 │   │   │   ├── memo/                       # Memo API routes
 │   │   │   │   ├── route.ts                # GET (list), POST (create)
@@ -93,7 +127,8 @@ A simple yet powerful web application for creating, viewing, and managing memos,
 │   │   └── utils.ts         # General utility functions (e.g., date formatting)
 │   └── types/               # TypeScript type definitions
 │       └── index.ts         # Shared types (Memo, User, etc.)
-├── .env                     # environment variables file
+├── .env                     # environment variables file (GITIGNORED!)
+├── .env.example             # Example environment variables
 ├── next.config.js           # Next.js configuration
 ├── package.json             # Project dependencies and scripts
 ├── tailwind.config.ts       # Tailwind CSS configuration
@@ -120,13 +155,22 @@ A simple yet powerful web application for creating, viewing, and managing memos,
 ```prisma
 // prisma/schema.prisma
 
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // Or your chosen DB provider
+  url      = env("DATABASE_URL")
+}
+
 model Memo {
-  id        String   @id @default(cuid())
-  title     String
-  content   String?  @db.Text // Assuming content can be long
-  isPublic  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt // Managed by Prisma/DB
+  id              String   @id @default(cuid())
+  title           String
+  content         String?  @db.Text
+  isPublic        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt // Managed by Prisma/DB
   clientUpdatedAt DateTime @default(now()) // Timestamp from client for conflict resolution
 
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
@@ -136,7 +180,37 @@ model Memo {
 }
 
 // Default NextAuth models (User, Account, Session, VerificationToken)
-// ... (Refer to NextAuth Prisma Adapter documentation)
+// Needed for Prisma Adapter
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -145,20 +219,27 @@ model User {
   image         String?
   accounts      Account[]
   sessions      Session[]
-  memos         Memo[]    // Relation to memos created by the user
+  memos         Memo[] // Relation to memos created by the user
 }
 
-// ... other NextAuth models
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
 ```
 
 ## Getting Started
 
 ### Prerequisites
 
--   Node.js (v16.x or later recommended)
+-   Node.js (v18.x or later recommended for Next.js 13+)
 -   npm, yarn, or pnpm
 -   Git
--   A PostgreSQL database (or modify `prisma/schema.prisma` and `.env` for a different database)
+-   A PostgreSQL database instance (or modify `prisma/schema.prisma` and `.env` for a different database like SQLite)
 -   Google Cloud Platform project with OAuth 2.0 Credentials (Client ID and Client Secret)
 
 ### Installation
@@ -189,31 +270,34 @@ model User {
 
     ```dotenv
     # Database connection string (Prisma)
-    # Example for PostgreSQL: postgresql://USER:PASSWORD@HOST:PORT/DATABASE
+    # Example for PostgreSQL: postgresql://USER:PASSWORD@HOST:PORT/DATABASE?schema=public
+    # Example for SQLite: file:./dev.db (place it in the prisma folder or adjust path)
     DATABASE_URL="postgresql://..."
 
     # NextAuth Configuration
-    # Generate a strong secret: `openssl rand -base64 32`
+    # Generate a strong secret: `openssl rand -base64 32` on Linux/macOS
     NEXTAUTH_SECRET="YOUR_NEXTAUTH_SECRET"
-    # Your application's base URL
-    NEXTAUTH_URL="http://localhost:3000" # Change for deployment
+    # Your application's base URL for development
+    NEXTAUTH_URL="http://localhost:3000" # IMPORTANT: Change for deployment
 
     # Google OAuth Credentials
-    # Get these from Google Cloud Console -> APIs & Services -> Credentials
-    GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID"
+    # Get these from Google Cloud Console -> APIs & Services -> Credentials -> Create Credentials -> OAuth client ID
+    # Ensure Authorized JavaScript origins include http://localhost:3000
+    # Ensure Authorized redirect URIs include http://localhost:3000/api/auth/callback/google
+    GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
     GOOGLE_CLIENT_SECRET="YOUR_GOOGLE_CLIENT_SECRET"
 
     ```
 
 ### Database Setup
 
-1.  **Apply database migrations:** This will create the necessary tables based on your `prisma/schema.prisma` file.
+1.  **Apply database migrations:** This command creates the database (if it doesn't exist for some providers like SQLite) and applies all pending migrations to create the schema defined in `prisma/schema.prisma`.
     ```bash
     npx prisma migrate dev --name init
     ```
-    *(Follow prompts if any)*
+    *(You might be prompted to reset the database if changes are detected. Use `init` for the very first migration name, or choose a descriptive name for subsequent migrations.)*
 
-2.  **Generate Prisma Client:** Ensure the Prisma client is up-to-date with your schema.
+2.  **Generate Prisma Client:** Ensure the Prisma Client code (`@prisma/client`) is generated and up-to-date with your schema. This usually happens automatically after `migrate dev`, but running it manually doesn't hurt.
     ```bash
     npx prisma generate
     ```
@@ -242,25 +326,19 @@ model User {
 
 ## Known Issues & Future Enhancements
 
--   **~~Memo Selection Issue:~~** ~~When signed in, selecting a memo sometimes prevents selecting another.~~ *(Status: Believed Solved - The original issue description was unclear, but subsequent fixes likely addressed this. Re-verify if necessary).*
--   **~~Low Polling Rate:~~** *(Status: Solved)* Polling interval is now configurable and set to 5 seconds.
--   **~~Missing "Add Memo" Button:~~** *(Status: Solved)* An add button should now be present in the Explorer.
--   **~~Missing Public/Private Toggle:~~** *(Status: Solved)* A toggle switch for visibility should now be present in the Memo Editor.
-
-**Potential Future Enhancements:**
-
--   Implement real-time collaboration using WebSockets (e.g., Pusher, Socket.IO) instead of polling for a more instant experience.
--   Add Markdown support to the memo content.
--   Implement folders or tags for organizing memos.
--   Add full-text search capabilities.
--   Improve UI/UX feedback during saving, polling, and conflict resolution states.
+-   **UI Feedback:** Improve visual feedback during async operations like saving, polling updates, and handling save conflicts (e.g., subtle loading indicators, toast notifications for errors/conflicts).
+-   **Real-time:** Replace polling with WebSockets (e.g., Pusher, Socket.IO, or Ably) for truly instant updates, especially for collaboration scenarios.
+-   **Editor Features:** Add Markdown support or a richer text editor for memo content.
+-   **Organization:** Implement folders, tags, or categories for better memo organization.
+-   **Search:** Add full-text search capabilities across memos.
+-   **Error Handling:** Enhance client-side and server-side error handling and reporting.
 
 ## Contributing
 
-Contributions are welcome! Please follow standard Gitflow practices: open an issue to discuss proposed changes, then submit a pull request from a feature branch.
+Contributions are welcome! Please feel free to open an issue to discuss potential changes or features, or submit a pull request. For major changes, please open an issue first.
 
-*(Optional: Add more specific contribution guidelines if needed)*
+*(Optional: Add more specific contribution guidelines: coding style, commit message format, etc.)*
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE). *(Optional: Create a LICENSE file with the MIT license text)*
+This project is licensed under the [MIT License](LICENSE). *(Remember to create a LICENSE file containing the MIT license text)*
