@@ -95,17 +95,16 @@ This project strives for maintainable, performant, and type-safe code by adherin
 ├── public/                  # Static assets (images, fonts, etc.)
 ├── src/
 │   ├── app/                 # Next.js App Router: Routing, Layouts, Pages, API Handlers
-│   │   ├── (main)/          # Route Group for main application layout/pages
-│   │   │   ├── layout.tsx   # Main layout (incl. Header, possibly sidebar structure)
-│   │   │   └── page.tsx     # Main dashboard/entry page component (renders Memo features)
 │   │   ├── api/             # Serverless API endpoints (Route Handlers)
 │   │   │   ├── auth/[...nextauth]/route.ts # NextAuth catch-all route
-│   │   │   ├── memos/                      # Grouped Memo API routes
+│   │   │   ├── memo/                       # Grouped Memo API routes
 │   │   │   │   ├── route.ts                # GET (list), POST (create)
 │   │   │   │   └── [id]/                   # Operations on a specific memo
 │   │   │   │       ├── route.ts            # GET (detail), PUT (update), DELETE
 │   │   │   │       └── utils.ts            # (Optional) Utility functions specific to this API endpoint
 │   │   │   └── _lib/           # (Optional) Shared utilities/middleware for API routes (e.g., auth checks)
+│   │   ├── layout.tsx   # Main layout (incl. Header, possibly sidebar structure)
+│   │   ├── page.tsx     # Main dashboard/entry page component (renders Memo features)
 │   │   ├── layout.tsx       # Root application layout (providers, global styles)
 │   │   └── global-error.tsx # Optional: Global error boundary for app/
 │   │   └── loading.tsx      # Optional: Root loading state
@@ -120,7 +119,7 @@ This project strives for maintainable, performant, and type-safe code by adherin
 │   │   ├── auth/
 │   │   │   └── components/
 │   │   │       └── AuthButtons.tsx
-│   │   ├── memos/
+│   │   ├── memo/
 │   │   │   ├── components/    # Components specific to the Memo feature
 │   │   │   │   ├── MemoEditor.tsx
 │   │   │   │   ├── MemoViewer.tsx
@@ -195,7 +194,7 @@ datasource db {
 model Memo {
   id              String   @id @default(cuid())
   title           String
-  content         String?  @db.Text
+  content         String?
   isPublic        Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt // Managed by Prisma/DB
@@ -215,12 +214,12 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
