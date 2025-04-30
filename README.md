@@ -93,7 +93,7 @@ A simple yet powerful web application for creating, viewing, and managing memos,
 │   │   └── utils.ts         # General utility functions (e.g., date formatting)
 │   └── types/               # TypeScript type definitions
 │       └── index.ts         # Shared types (Memo, User, etc.)
-├── .env.example             # Example environment variables file
+├── .env                     # environment variables file
 ├── next.config.js           # Next.js configuration
 ├── package.json             # Project dependencies and scripts
 ├── tailwind.config.ts       # Tailwind CSS configuration

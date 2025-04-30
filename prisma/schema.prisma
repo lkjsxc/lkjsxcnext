@@ -1,23 +1,39 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// prisma/schema.prisma
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql" // Or your preferred database
+  provider = "postgresql" // Or your chosen database
   url      = env("DATABASE_URL")
 }
 
+model Memo {
+  id              String    @id @default(cuid())
+  title           String
+  content         String?   @db.Text // Assuming content can be long
+  isPublic        Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt // Managed by Prisma/DB
+  clientUpdatedAt DateTime  @default(now()) // Timestamp from client for conflict resolution
+
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId String
+
+  @@index([authorId])
+}
+
+// Default NextAuth models (User, Account, Session, VerificationToken)
+// Refer to NextAuth Prisma Adapter documentation: https://authjs.dev/reference/adapters/prisma
 model Account {
   id                String  @id @default(cuid())
   userId            String
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
@@ -45,7 +61,7 @@ model User {
   image         String?
   accounts      Account[]
   sessions      Session[]
-  memos         Memo[]
+  memos         Memo[]    // Relation to memos created by the user
 }
 
 model VerificationToken {
@@ -54,22 +70,4 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
-}
-
-model Memo {
-  id        String   @id @default(cuid())
-  title     String
-  content   String?  @db.Text
-  isPublic  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt // Server-side update timestamp
-
-  // Timestamp provided by the client for conflict resolution
-  clientUpdatedAt DateTime @default(now())
-
-  authorId String
-  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
-
-  @@index([authorId])
-  @@index([isPublic])
 }
