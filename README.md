@@ -59,8 +59,6 @@ A simple yet powerful web application for creating, viewing, and managing memos,
 
 ## Code Quality & Philosophy
 
-# --- START OF ADDED SECTION ---
-
 This project strives for maintainable, performant, and type-safe code by adhering to the following principles when working with Next.js (App Router) and TypeScript:
 
 -   **Prioritize React Server Components (RSC):** Default to RSCs for improved performance (smaller client bundles, closer data fetching). Use Client Components (`"use client"`) only where necessary for interactivity (hooks like `useState`, `useEffect`, event handlers). Understand the limitations of RSCs (no browser APIs, props must be serializable).
@@ -88,8 +86,6 @@ This project strives for maintainable, performant, and type-safe code by adherin
     -   Favor component composition.
 -   **Leverage Next.js Conventions:** Utilize App Router file conventions (`layout.tsx`, `page.tsx`, `loading.tsx`, `error.tsx`), Route Handlers, and built-in optimizations like `next/image` and `next/dynamic`.
 
-# --- END OF ADDED SECTION ---
-
 ## Project Structure
 
 ```
@@ -98,35 +94,67 @@ This project strives for maintainable, performant, and type-safe code by adherin
 │   └── schema.prisma
 ├── public/                  # Static assets (images, fonts, etc.)
 ├── src/
-│   ├── app/                 # Next.js App Router (Pages & API Routes)
+│   ├── app/                 # Next.js App Router: Routing, Layouts, Pages, API Handlers
+│   │   ├── (main)/          # Route Group for main application layout/pages
+│   │   │   ├── layout.tsx   # Main layout (incl. Header, possibly sidebar structure)
+│   │   │   └── page.tsx     # Main dashboard/entry page component (renders Memo features)
 │   │   ├── api/             # Serverless API endpoints (Route Handlers)
 │   │   │   ├── auth/[...nextauth]/route.ts # NextAuth catch-all route
-│   │   │   ├── memo/                       # Memo API routes
+│   │   │   ├── memos/                      # Grouped Memo API routes
 │   │   │   │   ├── route.ts                # GET (list), POST (create)
-│   │   │   │   └── [id]/route.ts           # GET (detail), PUT (update), DELETE
-│   │   ├── layout.tsx       # Root application layout
-│   │   └── page.tsx         # Main application page component (renders Explorer, MainWindow)
-│   ├── components/          # Reusable React components
-│   │   ├── AuthButtons.tsx  # Sign in/out buttons
-│   │   ├── Explorer.tsx     # Left sidebar: Memo list, New Memo button
-│   │   ├── Header.tsx       # Top navigation bar
-│   │   ├── MainWindow.tsx   # Main content area (MemoViewer or MemoEditor)
-│   │   ├── MemoEditor.tsx   # Editor view for a memo
-│   │   ├── MemoViewer.tsx   # Read-only view for a memo
-│   │   ├── PollingContext.tsx # Context and Provider for centralized polling
-│   │   └── Spinner.tsx      # Loading indicator
-│   ├── hooks/               # Custom React Hooks for logic reuse
-│   │   ├── useAutoSave.ts        # Debounces input and triggers save action
-│   │   ├── useMemoDetail.ts      # Fetches and manages single memo state
-│   │   ├── useMemoUpdateQueue.ts # Manages sequential API updates for a memo
-│   │   ├── useMemos.ts           # Fetches and manages the list of memos
-│   │   └── usePolling.ts         # Hook to register/unregister tasks with PollingContext
-│   ├── lib/                 # Core utilities, clients, configurations
+│   │   │   │   └── [id]/                   # Operations on a specific memo
+│   │   │   │       ├── route.ts            # GET (detail), PUT (update), DELETE
+│   │   │   │       └── utils.ts            # (Optional) Utility functions specific to this API endpoint
+│   │   │   └── _lib/           # (Optional) Shared utilities/middleware for API routes (e.g., auth checks)
+│   │   ├── layout.tsx       # Root application layout (providers, global styles)
+│   │   └── global-error.tsx # Optional: Global error boundary for app/
+│   │   └── loading.tsx      # Optional: Root loading state
+│   ├── components/          # Shared, reusable React components (UI Primitives & Layouts)
+│   │   ├── layout/          # Components defining page structure (Header, SidebarWrapper etc.)
+│   │   │   └── Header.tsx
+│   │   └── ui/              # Generic, context-agnostic UI elements (Button, Input, Spinner, Card etc.)
+│   │       └── Spinner.tsx
+│   │       └── Button.tsx     # Example
+│   │       └── ...
+│   ├── features/            # Feature-specific modules (UI, Hooks, Logic)
+│   │   ├── auth/
+│   │   │   └── components/
+│   │   │       └── AuthButtons.tsx
+│   │   ├── memos/
+│   │   │   ├── components/    # Components specific to the Memo feature
+│   │   │   │   ├── MemoEditor.tsx
+│   │   │   │   ├── MemoViewer.tsx
+│   │   │   │   ├── MemoList.tsx    # Renamed/Refactored from Explorer?
+│   │   │   │   └── MemoListItem.tsx # Extracted item for the list
+│   │   │   ├── hooks/         # Hooks specific to the Memo feature logic
+│   │   │   │   ├── useMemoDetail.ts
+│   │   │   │   ├── useMemosList.ts # Renamed from useMemos for clarity
+│   │   │   │   └── useMemoAutoSave.ts # Combines auto-save & queue logic? Or keeps separate
+│   │   │   │   └── useMemoUpdateQueue.ts # (If kept separate from useMemoAutoSave)
+│   │   │   └── services/      # (Optional but recommended) Logic for memo data operations (called by API/Server Actions)
+│   │   │       └── memoService.ts # Functions like getMemo, createMemo, updateMemo, deleteMemo
+│   │   └── polling/
+│   │       ├── context/       # Context definitions
+│   │       │   └── PollingContext.tsx
+│   │       └── hooks/         # Hooks related to polling
+│   │           └── usePolling.ts
+│   ├── contexts/            # Application-wide contexts (can also live in features if specific)
+│   │   └── Providers.tsx    # Component to aggregate all context providers (Polling, SessionProvider, etc.)
+│   ├── hooks/               # Shared, cross-cutting custom hooks (if any)
+│   │   └── (e.g., useDebounce.ts, useLocalStorage.ts)
+│   ├── lib/                 # Core utilities, clients, configurations, constants
 │   │   ├── auth.ts          # NextAuth configuration options
+│   │   ├── constants.ts     # Application constants (e.g., polling interval, API paths)
 │   │   ├── prisma.ts        # Prisma client singleton instance
-│   │   └── utils.ts         # General utility functions (e.g., date formatting)
-│   └── types/               # TypeScript type definitions
-│       └── index.ts         # Shared types (Memo, User, etc.)
+│   │   └── utils.ts         # General utility functions (date formatting, etc.)
+│   ├── services/            # Abstracted backend interaction logic (alternative to feature-specific services)
+│   │   └── (e.g., memoService.ts if not in features/memos) - Choose one location pattern
+│   └── types/               # Shared TypeScript type definitions & augmentations
+│       ├── index.ts         # Maybe export grouped types
+│       ├── api.ts           # Types for API request/response payloads
+│       ├── db.ts            # Types related to Prisma models (can re-export generated types)
+│       ├── memo.ts          # Specific types for the Memo domain object
+│       └── next-auth.d.ts   # Augmenting NextAuth types (e.g., Session user)
 ├── .env                     # environment variables file (GITIGNORED!)
 ├── .env.example             # Example environment variables
 ├── next.config.js           # Next.js configuration
