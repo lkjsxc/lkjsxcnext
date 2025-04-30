@@ -18,60 +18,60 @@ This is a simple web application for creating, viewing, and managing memos. It s
 - **Optimistic Updates & Conflict Resolution:**
   - Memo updates are queued and processed sequentially.
   - The server uses a client-provided timestamp (`clientUpdatedAt`) to detect and reject older updates, preventing data loss from concurrent edits (though concurrent editing by multiple users is not explicitly supported or prevented in the UI).
-- **Polling:**
-  - The list of memos is periodically polled to show new or updated memos.
-  - When viewing a memo that you do *not* own, the memo details are periodically polled to show updates made by the owner.
-  - When editing your own memo, polling for that specific memo's details is disabled to prevent server changes from overwriting your current edits in the editor.
+- **Centralized Polling:**
+ - Polling logic is now centralized within the `PollingContext.tsx` component.
+ - A global tick runs every 5 seconds, triggering all registered polling tasks.
+ - The `usePolling` hook allows components to register and unregister their specific polling needs.
+ - The list of memos is periodically polled to show new or updated memos.
+ - When viewing a memo that you do *not* own, the memo details are periodically polled to show updates made by the owner.
+ - When editing your own memo, polling for that specific memo's details is disabled to prevent server changes from overwriting your current edits in the editor.
 - **Responsive Design:** (Inferred from Tailwind usage and component structure, but not explicitly detailed in code snippets read).
 
 ## Structure
 
 The project follows a standard Next.js App Router structure. Key directories and files include:
-
 ```
 .
-├── prisma/
-│   └── schema.prisma         # Database schema (Prisma)
+├── prisma/                  # Prisma schema and migrations
+│   └── schema.prisma
+├── public/                  # Static assets
 ├── src/
-│   ├── app/
-│   │   ├── api/
-│   │   │   ├── auth/
-│   │   │   │   └── [...nextauth]/route.ts # NextAuth API route
+│   ├── app/                 # Next.js App Router directory
+│   │   ├── api/             # API Routes
+│   │   │   ├── auth/[...nextauth]/route.ts # NextAuth handler
 │   │   │   ├── memo/
-│   │   │   │   ├── [id]/route.ts     # API routes for specific memos (GET, PUT, DELETE)
-│   │   │   │   └── route.ts          # API routes for memos (GET, POST)
-│   │   │   └── route.ts              # Placeholder or general API routes
-│   │   ├── favicon.ico               # Favicon
-│   │   ├── globals.css               # Global styles (Tailwind CSS)
-│   │   ├── layout.tsx                # Root layout component
-│   │   └── page.tsx                  # Home page component
-│   ├── components/
-│   │   ├── auth_button.tsx           # Authentication button component
-│   │   ├── auth_provider.tsx         # Authentication provider component
-│   │   ├── Explorer.tsx              # Memo explorer/list component
-│   │   ├── Header.tsx                # Application header component
-│   │   ├── MainWindow.tsx            # Main content window (Editor/Viewer)
-│   │   └── PollingContext.tsx        # Context for managing polling
-│   ├── hooks/
-│   │   ├── use_auth_handler.ts       # Hook for handling authentication state
-│   │   ├── useAutoSave.ts            # Hook for auto-saving memo content
-│   │   ├── useCreateMemo.ts          # Hook for creating memos
-│   │   ├── useDeleteMemo.ts          # Hook for deleting memos
-│   │   ├── useMemoUpdateQueue.ts     # Hook for managing memo update queue
-│   │   └── usePolling.ts             # Hook for handling polling logic
-│   └── types/
-│       ├── memo.d.ts                 # TypeScript types for memos
-│       └── next-auth.d.ts            # TypeScript types for NextAuth
-├── .eslintrc.json                    # ESLint configuration
-├── .gitignore                        # Git ignore file
-├── next.config.mjs                   # Next.js configuration
-├── package-lock.json                 # npm package lock file
-├── package.json                      # npm package file
-├── postcss.config.mjs                # PostCSS configuration
-├── README.md                         # Project README
-├── server.ts                         # Custom server setup (if any)
-├── tailwind.config.ts                # Tailwind CSS configuration
-└── tsconfig.json                     # TypeScript configuration
+│   │   │   │   ├── route.ts          # Handles GET (list), POST (create)
+│   │   │   │   └── [id]/
+│   │   │   │       └── route.ts      # Handles GET (detail), PUT (update), DELETE
+│   │   ├── layout.tsx       # Root layout (includes SessionProvider)
+│   │   └── page.tsx         # Main application page component
+│   ├── components/          # Reusable UI Components
+│   │   ├── AuthButtons.tsx
+│   │   ├── Explorer.tsx
+│   │   ├── Header.tsx
+│   │   ├── MainWindow.tsx
+│   │   ├── MemoEditor.tsx
+│   │   ├── MemoViewer.tsx
+│   │   ├── Polling.tsx      # global polling tick with Queue
+│   │   └── Spinner.tsx      # Simple loading spinner
+│   ├── hooks/               # Custom React Hooks
+│   │   ├── useAutoSave.ts
+│   │   ├── useMemoDetail.ts
+│   │   ├── useMemoUpdateQueue.ts
+│   │   ├── useMemos.ts
+│   │   └── usePolling.ts    # Generic polling hook
+│   ├── lib/                 # Utility functions, Prisma client, Auth options
+│   │   ├── auth.ts          # NextAuth configuration options
+│   │   ├── prisma.ts        # Prisma client instance
+│   │   └── utils.ts         # Helper functions (e.g., date formatting)
+│   └── types/               # TypeScript type definitions
+│       └── index.ts         # Main types (e.g., Memo)
+├── .env                     # Environment variables (DB URL, Google creds, NEXTAUTH_SECRET)
+├── next.config.js
+├── package.json
+├── tailwind.config.ts
+├── tsconfig.json
+└── README.md
 ```
 
 ## Layout
@@ -95,7 +95,6 @@ The project follows a standard Next.js App Router structure. Key directories and
 - Polling rate is too low. 5 seconds is ideal. (Solved)
 - There is no button to add a memo in Explorer. (Solved)
 - There is no switch to toggle private/public in Editor. A green and gray toggle is preferable. (Solved)
-- Polling is spread across several files. It would be better to consolidate it into a dedicated component.
 
 ## Technical Stack
 
