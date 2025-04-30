@@ -44,7 +44,8 @@ This is a simple web application for creating, viewing, and managing memos. It s
 - When signed, Once I select a memo, I cannot select another memo. There seems to be a problem other than Explorer.tsx.
 - Polling rate is too low. 5 seconds is ideal. (Solved)
 - There is no button to add a memo in Explorer. (Solved)
-- There is no button to toggle private/public in Editor. A green and gray toggle is preferable.
+- There is no switch to toggle private/public in Editor. A green and gray toggle is preferable. (Solved)
+- Polling is spread across several files. It would be better to consolidate it into a dedicated component.
 
 ## Technical Stack
 

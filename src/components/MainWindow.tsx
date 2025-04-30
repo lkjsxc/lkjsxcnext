@@ -139,6 +139,21 @@ const MainWindow: React.FC<MainWindowProps> = ({ selectedMemoId, onMemoCreated, 
           <div className="flex flex-col h-full">
             <div className="flex justify-between items-center mb-4">
                <p className="text-gray-600">Editing as owner...</p>
+               {/* Public/Private Toggle */}
+               <label className="flex items-center cursor-pointer">
+                 <span className="mr-2 text-gray-700">Private</span>
+                 <div className="relative">
+                   <input
+                     type="checkbox"
+                     className="sr-only"
+                     checked={memo.isPublic}
+                     onChange={(e) => setMemo({ ...memo, isPublic: e.target.checked })}
+                   />
+                   <div className={`block w-14 h-8 rounded-full transition ${memo.isPublic ? 'bg-green-500' : 'bg-gray-600'}`}></div>
+                   <div className={`dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition ${memo.isPublic ? 'translate-x-full' : ''}`}></div>
+                 </div>
+                 <span className="ml-2 text-gray-700">Public</span>
+               </label>
                <button
                  onClick={handleDeleteMemo}
                  className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
