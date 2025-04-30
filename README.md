@@ -259,6 +259,22 @@ model VerificationToken {
 
 ```
 
+## Site layout
+- **Header** 
+  - left: lkjsxcnext(this project name)
+  - right: google signin button (or display account name and signout button)
+- **Explorer**
+  - Show public all user memo and my private memo
+  **MainWindow** 
+  - editor mode: when (I) changed, add send queue (polling).
+    - title text box
+    - content text box
+    - public / private toggle.
+    - delete button
+  - viewer mode: when (other user) changed, add recv queue (polling).
+    - title text 
+    - content text
+
 ## Getting Started
 
 ### Prerequisites
