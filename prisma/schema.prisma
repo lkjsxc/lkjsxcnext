@@ -1,22 +1,17 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
 // prisma/schema.prisma
 
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "postgresql" // Or your chosen database
-  url      = env("DATABASE_URL")
-}
-
 model Memo {
-  id              String    @id @default(cuid())
-  title           String
-  content         String?   @db.Text // Assuming content can be long
-  isPublic        Boolean   @default(false)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt // Managed by Prisma/DB
-  clientUpdatedAt DateTime  @default(now()) // Timestamp from client for conflict resolution
+  id        String   @id @default(cuid())
+  title     String
+  content   String?  
+  isPublic  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt // Managed by Prisma/DB
+  clientUpdatedAt DateTime @default(now()) // Timestamp from client for conflict resolution
 
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
   authorId String
@@ -25,19 +20,31 @@ model Memo {
 }
 
 // Default NextAuth models (User, Account, Session, VerificationToken)
-// Refer to NextAuth Prisma Adapter documentation: https://authjs.dev/reference/adapters/prisma
+// ... (Refer to NextAuth Prisma Adapter documentation)
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  memos         Memo[]    // Relation to memos created by the user
+}
+
+// Required for NextAuth.js
 model Account {
   id                String  @id @default(cuid())
   userId            String
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String?
-  access_token      String?
+  refresh_token     String? 
+  access_token      String? 
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String? 
   session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -50,18 +57,8 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
 
-model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  accounts      Account[]
-  sessions      Session[]
-  memos         Memo[]    // Relation to memos created by the user
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {

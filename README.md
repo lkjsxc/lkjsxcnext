@@ -45,7 +45,7 @@ A simple yet powerful web application for creating, viewing, and managing memos,
 -   **Framework:** Next.js 13+ (App Router)
 -   **Authentication:** NextAuth.js
 -   **Database ORM:** Prisma
--   **Database:** PostgreSQL (or any Prisma-supported database)
+-   **Database:** SQLite
 -   **Styling:** Tailwind CSS
 -   **UI:** React
 -   **Language:** TypeScript
