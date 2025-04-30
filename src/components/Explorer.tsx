@@ -47,9 +47,48 @@ const Explorer: React.FC<ExplorerProps> = ({ onSelectMemo }) => {
     onSelectMemo(memoId);
   };
 
+  const handleCreateMemo = async () => {
+    if (status !== 'authenticated') {
+      alert('You must be signed in to create a memo.');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/memo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: '',
+          content: '',
+          isPublic: false, // Default to private for new memos
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Error creating memo: ${res.statusText}`);
+      }
+
+      const newMemo: Memo = await res.json();
+      setMemos([newMemo, ...memos]); // Add new memo to the top of the list
+      handleMemoClick(newMemo.id); // Select the newly created memo
+
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
   return (
     <div className="h-full overflow-y-auto">
       <h2 className="text-lg font-semibold mb-4">Memos</h2>
+      <button
+        className={`mb-4 px-4 py-2 text-white rounded ${status === 'authenticated' ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-400 cursor-not-allowed'}`}
+        onClick={handleCreateMemo}
+        disabled={status !== 'authenticated'}
+      >
+        Add New Memo
+      </button>
       {/* {loading && <p>Loading memos...</p>} */}
       {error && <p className="text-red-500">Error: {error}</p>}
       {!loading && memos.length === 0 && <p>No memos found.</p>}
