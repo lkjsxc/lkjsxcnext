@@ -34,8 +34,7 @@ const Explorer: React.FC<ExplorerProps> = ({ onSelectMemo }) => {
   useEffect(() => {
     fetchMemos();
 
-    // Set up polling (e.g., every 10 seconds)
-    const pollingInterval = setInterval(fetchMemos, 10000);
+    const pollingInterval = setInterval(fetchMemos, 5000);
 
     // Clean up interval on component unmount or session status change
     return () => clearInterval(pollingInterval);
@@ -51,7 +50,7 @@ const Explorer: React.FC<ExplorerProps> = ({ onSelectMemo }) => {
   return (
     <div className="h-full overflow-y-auto">
       <h2 className="text-lg font-semibold mb-4">Memos</h2>
-      {loading && <p>Loading memos...</p>}
+      {/* {loading && <p>Loading memos...</p>} */}
       {error && <p className="text-red-500">Error: {error}</p>}
       {!loading && memos.length === 0 && <p>No memos found.</p>}
       <ul>
