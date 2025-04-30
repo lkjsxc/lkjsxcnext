@@ -1,44 +1,20 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { Memo } from '@/types/memo'; // Assuming a type definition for Memo exists
+import useMemoPolling from '@/hooks/usePolling';
 
 interface ExplorerProps {
   onSelectMemo: (memoId: string | null) => void;
 }
+
 const Explorer: React.FC<ExplorerProps> = ({ onSelectMemo }) => {
   const { data: session, status } = useSession();
-  const [memos, setMemos] = useState<Memo[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const scope = session ? 'private' : 'public';
+  const memoListUrl = `/api/memo?scope=${scope}`;
 
-  const fetchMemos = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const scope = session ? 'private' : 'public';
-      const res = await fetch(`/api/memo?scope=${scope}`);
-      if (!res.ok) {
-        throw new Error(`Error fetching memos: ${res.statusText}`);
-      }
-      const data: Memo[] = await res.json();
-      setMemos(data);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchMemos();
-
-    const pollingInterval = setInterval(fetchMemos, 5000);
-
-    // Clean up interval on component unmount or session status change
-    return () => clearInterval(pollingInterval);
-  }, [session, status]); // Refetch when session or status changes
+  const { data: memos, loading, error } = useMemoPolling({ list: true }) as { data: Memo[] | null, loading: boolean, error: string | null };
 
   const [selectedMemoId, setSelectedMemoId] = useState<string | null>(null);
 
@@ -71,11 +47,12 @@ const Explorer: React.FC<ExplorerProps> = ({ onSelectMemo }) => {
       }
 
       const newMemo: Memo = await res.json();
-      setMemos([newMemo, ...memos]); // Add new memo to the top of the list
       handleMemoClick(newMemo.id); // Select the newly created memo
 
     } catch (err: any) {
-      setError(err.message);
+      // Use the error state from usePolling or a local one if needed
+      console.error('Error creating memo:', err);
+      alert(`Error creating memo: ${err.message}`);
     }
   };
 
@@ -89,11 +66,11 @@ const Explorer: React.FC<ExplorerProps> = ({ onSelectMemo }) => {
       >
         Add New Memo
       </button>
-      {/* {loading && <p>Loading memos...</p>} */}
+      {loading && <p>Loading memos...</p>}
       {error && <p className="text-red-500">Error: {error}</p>}
-      {!loading && memos.length === 0 && <p>No memos found.</p>}
+      {!loading && memos && memos.length === 0 && <p>No memos found.</p>}
       <ul>
-        {memos.map(memo => (
+        {memos && memos.map(memo => (
           <li
             key={memo.id}
             className={`border-b last:border-b-0 py-2 cursor-pointer hover:bg-gray-50 px-2 ${selectedMemoId === memo.id ? 'bg-blue-100' : ''}`}

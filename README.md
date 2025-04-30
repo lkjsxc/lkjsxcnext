@@ -24,6 +24,56 @@ This is a simple web application for creating, viewing, and managing memos. It s
   - When editing your own memo, polling for that specific memo's details is disabled to prevent server changes from overwriting your current edits in the editor.
 - **Responsive Design:** (Inferred from Tailwind usage and component structure, but not explicitly detailed in code snippets read).
 
+## Structure
+
+The project follows a standard Next.js App Router structure. Key directories and files include:
+
+```
+.
+├── prisma/
+│   └── schema.prisma         # Database schema (Prisma)
+├── src/
+│   ├── app/
+│   │   ├── api/
+│   │   │   ├── auth/
+│   │   │   │   └── [...nextauth]/route.ts # NextAuth API route
+│   │   │   ├── memo/
+│   │   │   │   ├── [id]/route.ts     # API routes for specific memos (GET, PUT, DELETE)
+│   │   │   │   └── route.ts          # API routes for memos (GET, POST)
+│   │   │   └── route.ts              # Placeholder or general API routes
+│   │   ├── favicon.ico               # Favicon
+│   │   ├── globals.css               # Global styles (Tailwind CSS)
+│   │   ├── layout.tsx                # Root layout component
+│   │   └── page.tsx                  # Home page component
+│   ├── components/
+│   │   ├── auth_button.tsx           # Authentication button component
+│   │   ├── auth_provider.tsx         # Authentication provider component
+│   │   ├── Explorer.tsx              # Memo explorer/list component
+│   │   ├── Header.tsx                # Application header component
+│   │   ├── MainWindow.tsx            # Main content window (Editor/Viewer)
+│   │   └── PollingContext.tsx        # Context for managing polling
+│   ├── hooks/
+│   │   ├── use_auth_handler.ts       # Hook for handling authentication state
+│   │   ├── useAutoSave.ts            # Hook for auto-saving memo content
+│   │   ├── useCreateMemo.ts          # Hook for creating memos
+│   │   ├── useDeleteMemo.ts          # Hook for deleting memos
+│   │   ├── useMemoUpdateQueue.ts     # Hook for managing memo update queue
+│   │   └── usePolling.ts             # Hook for handling polling logic
+│   └── types/
+│       ├── memo.d.ts                 # TypeScript types for memos
+│       └── next-auth.d.ts            # TypeScript types for NextAuth
+├── .eslintrc.json                    # ESLint configuration
+├── .gitignore                        # Git ignore file
+├── next.config.mjs                   # Next.js configuration
+├── package-lock.json                 # npm package lock file
+├── package.json                      # npm package file
+├── postcss.config.mjs                # PostCSS configuration
+├── README.md                         # Project README
+├── server.ts                         # Custom server setup (if any)
+├── tailwind.config.ts                # Tailwind CSS configuration
+└── tsconfig.json                     # TypeScript configuration
+```
+
 ## Layout
 - **Header** 
   - left: lkjsxcnext(this project name)

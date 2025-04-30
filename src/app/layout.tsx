@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import AuthProvider from "../components/auth_provider";
+import { PollingProvider } from "../components/PollingContext";
 
 
 export const metadata: Metadata = {
@@ -19,7 +20,9 @@ export default function RootLayout({
         className={`antialiased`}
       >
         <AuthProvider>
-          {children}
+          <PollingProvider>
+            {children}
+          </PollingProvider>
         </AuthProvider>
       </body>
     </html>

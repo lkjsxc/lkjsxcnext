@@ -7,6 +7,7 @@ import useMemoUpdateQueue from '@/hooks/useMemoUpdateQueue';
 import useAutoSave from '@/hooks/useAutoSave';
 import useCreateMemo from '@/hooks/useCreateMemo';
 import useDeleteMemo from '@/hooks/useDeleteMemo';
+import useMemoPolling from '@/hooks/usePolling';
 
 interface MainWindowProps {
   selectedMemoId: string | null;
@@ -16,10 +17,35 @@ interface MainWindowProps {
 
 const MainWindow: React.FC<MainWindowProps> = ({ selectedMemoId, onMemoCreated, onMemoDeleted }) => {
   const { data: session } = useSession();
-  const [memo, setMemo] = useState<Memo | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const memoUrl = selectedMemoId ? `/api/memo/${selectedMemoId}` : null;
+
+  // Determine if the current user is the owner of the selected memo
+  // We need to fetch the memo first to know the authorId
   const [isOwner, setIsOwner] = useState(false);
+
+  // Polling is enabled only when a memo is selected AND the user is NOT the owner
+  const pollingEnabled = !!selectedMemoId && !isOwner;
+
+  const { data: fetchedMemo, loading, error } = useMemoPolling({
+    memoId: selectedMemoId,
+    enabled: pollingEnabled,
+  }) as { data: Memo | null, loading: boolean, error: string | null };
+
+  const [memo, setMemo] = useState<Memo | null>(null);
+
+  // Update local memo state and isOwner when fetchedMemo changes or selectedMemoId changes
+  useEffect(() => {
+    if (fetchedMemo) {
+      setMemo(fetchedMemo);
+      setIsOwner(fetchedMemo.authorId === session?.user?.id);
+    } else if (!selectedMemoId) {
+      // Clear memo state and isOwner if no memo is selected
+      setMemo(null);
+      setIsOwner(false);
+    }
+  }, [fetchedMemo, selectedMemoId, session]);
+
 
   const { addUpdate, isProcessing, error: updateError } = useMemoUpdateQueue();
   const { createMemo, loading: createLoading, error: createError } = useCreateMemo();
@@ -37,37 +63,6 @@ const MainWindow: React.FC<MainWindowProps> = ({ selectedMemoId, onMemoCreated, 
     isEditing: isOwner && !!memo, // Only auto-save if owner and memo exists
   });
 
-  useEffect(() => {
-    const fetchMemo = async () => {
-      // Do not fetch if no memo is selected or if the user is the owner (editing)
-      if (!selectedMemoId || isOwner) {
-        // If no memo selected, clear the current memo state
-        if (!selectedMemoId) {
-           setMemo(null);
-           setIsOwner(false);
-        }
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch(`/api/memo/${selectedMemoId}`);
-        if (!res.ok) {
-          throw new Error(`Error fetching memo: ${res.statusText}`);
-        }
-        const data: Memo & { isOwner: boolean } = await res.json();
-        setMemo(data);
-        setIsOwner(data.isOwner);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMemo();
-  }, [selectedMemoId, session]); // Refetch when selectedMemoId or session changes
 
   const handleCreateNewMemo = async () => {
     // TODO: Decide on initial data for new memo (e.g., title, content, public/private)
