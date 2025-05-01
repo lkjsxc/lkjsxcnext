@@ -14,7 +14,6 @@ const MemoListItem: React.FC<MemoListItemProps> = ({ memo, onSelect, isSelected 
       onClick={() => onSelect(memo.id)}
     >
       <h3 className="text-lg font-semibold truncate">{memo.title || 'Untitled Memo'}</h3>
-      <p className="text-sm text-gray-600 truncate">{memo.content || 'No content'}</p>
       <div className="text-xs text-gray-500 mt-1">
         {memo.isPublic ? 'Public' : 'Private'} | Last updated: {new Date(memo.updatedAt).toLocaleString()}
       </div>
