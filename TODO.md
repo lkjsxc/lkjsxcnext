@@ -29,7 +29,6 @@ Here is the reordered and slightly more granular checklist:
     *   [ ] Create the core directories: `prisma`, `public`, `src/app`, `src/components`, `src/lib`, `src/types`.
     *   [ ] Create placeholder files/folders within `src` as needed (e.g., `src/app/layout.tsx`, `src/app/page.tsx`, `src/lib/prisma.ts`, `src/lib/auth.ts`).
 *   [ ] **Environment Variables:**
-    *   [ ] Create `.env.example` listing all required variables (`DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`).
     *   [ ] Create `.env` file.
     *   [ ] Add `.env` to `.gitignore`.
     *   [ ] **Obtain Google OAuth Credentials:**

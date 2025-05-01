@@ -155,7 +155,6 @@ This project strives for maintainable, performant, and type-safe code by adherin
 │       ├── memo.ts          # Specific types for the Memo domain object
 │       └── next-auth.d.ts   # Augmenting NextAuth types (e.g., Session user)
 ├── .env                     # environment variables file (GITIGNORED!)
-├── .env.example             # Example environment variables
 ├── next.config.js           # Next.js configuration
 ├── package.json             # Project dependencies and scripts
 ├── tailwind.config.ts       # Tailwind CSS configuration
@@ -304,10 +303,7 @@ model VerificationToken {
 
 ### Environment Variables
 
-1.  Create a `.env` file in the root of the project by copying the example file:
-    ```bash
-    cp .env.example .env
-    ```
+1.  Create a `.env` file in the root of the project.
 
 2.  Fill in the required environment variables in the `.env` file:
 
