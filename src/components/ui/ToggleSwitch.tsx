@@ -2,12 +2,12 @@ import React from 'react';
 
 interface ToggleSwitchProps {
   isOn: boolean;
-  handleToggle: () => void;
+  onToggle: (isOn: boolean) => void;
   label?: string;
   className?: string;
 }
 
-const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ isOn, handleToggle, label, className }) => {
+const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ isOn, onToggle, label, className }) => {
   return (
     <div className={`flex items-center ${className}`}>
       {label && <span className="mr-2 text-gray-700">{label}</span>}
@@ -16,7 +16,7 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ isOn, handleToggle, label, 
         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
           isOn ? 'bg-blue-600' : 'bg-gray-200'
         }`}
-        onClick={handleToggle}
+        onClick={() => onToggle(!isOn)}
         role="switch"
         aria-checked={isOn}
       >

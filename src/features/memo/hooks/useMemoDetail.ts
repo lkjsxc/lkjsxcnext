@@ -14,29 +14,36 @@ const fetcher = async (url: string) => {
   return res.json();
 };
 
-const useMemoDetail = (memoId: string | null) => {
+const useMemoDetail = (memoId: string | null, ignoreServerUpdates: boolean = false) => {
   // Only fetch if memoId is not null
   const apiUrl = memoId ? `/api/memo/${memoId}` : null;
 
-  const { data, error, isLoading, mutate } = useSWR<GetMemoResponse, ApiErrorResponse>(apiUrl, fetcher);
+  const { data, error, isLoading, mutate } = useSWR<GetMemoResponse, ApiErrorResponse>(
+    apiUrl,
+    fetcher,
+    {
+      // Disable automatic revalidation when ignoring server updates
+      revalidateOnFocus: !ignoreServerUpdates,
+      revalidateOnReconnect: !ignoreServerUpdates
+    }
+  );
 
   const memo = data?.memo;
   const isOwner = data?.isOwner;
 
-  // Register polling task to refetch memo detail if not the owner
-  // Polling is also implicitly paused if memoId is null (apiUrl is null)
+  // Register polling task to refetch memo detail if not owner and not ignoring updates
   usePolling(() => {
-    if (memoId && !isOwner && !isLoading) { // Only poll if memo exists, user is not owner, and not currently loading
-      mutate(); // Trigger SWR revalidation
+    if (memoId && !isOwner && !isLoading && !ignoreServerUpdates) {
+      mutate();
     }
-  }, [memoId, isOwner, isLoading, mutate]); // Dependencies
+  }, [memoId, isOwner, isLoading, mutate, ignoreServerUpdates]);
 
   return {
     memo,
     isOwner,
     isLoading,
     error,
-    refetch: mutate, // Expose mutate as refetch
+    refetch: mutate,
   };
 };
 
